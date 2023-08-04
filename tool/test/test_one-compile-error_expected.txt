@@ -1,0 +1,3 @@
+Error compiling suppression in line 0: unterminated character set
+  Offending suppression: >>[<<
+Compilation errors in 1 suppressions
