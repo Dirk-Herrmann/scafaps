@@ -73,8 +73,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
    exit 1
 fi
 
-long_options=blanks,comments,help,indent,nums,paths,strings,wrnlvl
-short_options=bchinpsw
+long_options=help,indent,nums
+short_options=hin
 getopt_output=$(getopt --name "$0" --longoptions "${long_options}" --options "${short_options}" -- "$@")
 
 eval set -- "${getopt_output}" # re-assign the positional arguments
