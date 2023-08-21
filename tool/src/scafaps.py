@@ -49,6 +49,9 @@ def read_suppression_file(path):
       regexps = []
       errors = 0
       for nr, raw_line in enumerate(raw_lines):
+         if len(raw_line) > 0 and raw_line[0] == "#":
+            # ignore comment lines and shebang line
+            continue
          try:
             regexp = re.compile(raw_line)
             regexps.append(Regexp(nr, raw_line, regexp))
@@ -126,7 +129,8 @@ def recursiveShowDiffs(lcsTable, regexps, lines, i, j):
       return (counts[0] + 1, counts[1])
 
 def showDiffsFromLcsTable(lcsTable, regexps, lines):
-   sys.setrecursionlimit(len(regexps) + len(lines)) # Python's default is only 1000
+   # Python's default recursion limit is only 1000
+   sys.setrecursionlimit(max(1000, len(regexps) + len(lines)))
    counts = recursiveShowDiffs(lcsTable, regexps, lines, len(regexps), len(lines))
    return counts
 

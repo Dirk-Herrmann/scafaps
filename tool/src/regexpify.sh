@@ -59,6 +59,7 @@ function print_help () {
 	  -i, --indent        convert whitespace at beginning of lines into a regexp
 	                      to match the line also with different indentation
 	  -n, --nums          convert literal numbers into regexps matching any number
+	  -s, --shebang       add a shebang line for an executable suppressions file
 
 	EOF
 }
@@ -73,8 +74,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
    exit 1
 fi
 
-long_options=help,indent,nums
-short_options=hin
+long_options=help,indent,nums,shebang
+short_options=hins
 getopt_output=$(getopt --name "$0" --longoptions "${long_options}" --options "${short_options}" -- "$@")
 
 eval set -- "${getopt_output}" # re-assign the positional arguments
@@ -82,6 +83,7 @@ eval set -- "${getopt_output}" # re-assign the positional arguments
 # option defaults
 indent=
 nums=
+shebang=
 
 while true; do
    case "$1" in
@@ -95,6 +97,10 @@ while true; do
          ;;
       '-n'|'--nums')
          nums='s/[0-9]+/[0-9]+/g;'
+         shift
+         ;;
+      '-s'|'--shebang')
+         shebang=$'1i\\\n#!/usr/bin/env scafaps.py\n'
          shift
          ;;
       '--')
@@ -116,8 +122,16 @@ fi
 
 # s/<POSIX ERE regexp>/<Python regexp>/
 sed --regexp-extended '
+   # protect backslashes in the original
    s/\\/\\\\/g;
-   s/([.*+?[(){^$])/\\&/g' \
+   # quote the characters .*+?[(){^$
+   s/([.*+?[(){^$])/\\&/g;
+   # protect lines starting with #
+   s/^#/[#]/' \
 | sed --regexp-extended "
+   # generalize indentation
    ${indent}
-   ${nums} "
+   # generalize numbers
+   ${nums}
+   # add shebang line
+   ${shebang}"
