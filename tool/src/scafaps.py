@@ -64,7 +64,28 @@ def read_suppression_file(path):
       else:
          return regexps
 
-# TODO: Optimize time/memory by skipping initial lines that match
+# Function showMatch is factored out, because it is used at two different
+# places: when computing the initial matching sequence, and when showing the
+# results after computing the lcsTable
+def showMatch(regexps, lines, i, j):
+   # show only in verbose mode
+   log(1, 'Match:')
+   log(1, f'~ {regexps[i].linenr}: {regexps[i].content}')
+   log(1, f'= {lines[j].linenr}: {lines[j].content}')
+
+# Find and show matches between regexps[i] and lines[i] for i=0..
+def computeInitialMatchingSequence(regexps, lines):
+   for index, (regexp, line) in enumerate(zip(regexps, lines)):
+      if regexp.regexp.fullmatch(line.content):
+         showMatch(regexps, lines, index, index)
+      else:
+         # index of the first mismatch is the length so far
+         return index
+   # length is shorter of the two lists (which may be empty)
+   return min(len(regexps), len(lines))
+
+# TODO: Optimize time by only computing matches for fields that can actually
+# become part of the lcs
 def computeLcsTable(regexps, lines):
    array = [[0] * (len(lines) + 1) for r in range(len(regexps) + 1)]
    for i in range(1, len(regexps) + 1):
@@ -102,11 +123,9 @@ def recursiveShowDiffs(lcsTable, regexps, lines, i, j):
          print(f'+ {lines[j-1].linenr}: {lines[j-1].content}')
          return (counts[0], counts[1] + 1)
       else:
-         # Take this match, don't show it unless in verbose mode
+         # Take this match
          counts = recursiveShowDiffs(lcsTable, regexps, lines, i-1, j-1)
-         log(1, 'Match:')
-         log(1, f'~ {regexps[i-1].linenr}: {regexps[i-1].content}')
-         log(1, f'= {lines[j-1].linenr}: {lines[j-1].content}')
+         showMatch(regexps, lines, i-1, j-1)
          return counts
    elif lcsTable[i][j-1] > lcsTable[i-1][j]:
       counts = recursiveShowDiffs(lcsTable, regexps, lines, i, j-1)
@@ -184,6 +203,11 @@ def run_scafaps():
    log(1, 'Reading input lines (SCA output) from stdin')
    lines = read_lines(sys.stdin) # TODO: allow named file to be given on command line
    log(2, f'Input lines: {lines}')
+
+   skip = computeInitialMatchingSequence(regexps, lines)
+   log(3, f'initial matching sequence length: {skip}')
+   regexps = regexps[skip:]
+   lines   = lines[skip:]
 
    lcsTable = computeLcsTable(regexps, lines)
    log(3, f'lcsTable: {lcsTable}')
