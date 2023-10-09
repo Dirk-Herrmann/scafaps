@@ -4,7 +4,7 @@
 
 import argparse
 import dataclasses
-import os
+import pathlib
 import re
 import sys
 
@@ -43,7 +43,7 @@ class Regexp:
    regexp: re.Pattern
 
 # TODO: Allow convenience patterns in suppressions, like %path%
-def read_suppression_file(path):
+def read_suppressions_file(path):
    with open(path) as input_file:
       raw_lines = read_raw_lines(input_file)
       regexps = []
@@ -157,9 +157,15 @@ def parse_arguments():
    parser = argparse.ArgumentParser(
       description='Suppress false positives from static code analysis.' )
    parser.add_argument(
-      'suppressions', metavar='suppressions-file', type=file_name,
+      'suppressions', metavar='suppressions-file', type=pathlib.Path,
       help=
          'file with suppressions to be applied' )
+   parser.add_argument(
+      '--suppressions-file-not-found', choices=['error', 'empty'], default='error',
+      help=
+         'how to proceed if the suppressions-file does not exist:\n'
+         '   error: exit with error code\n'
+         '   empty: treat as empty file with no suppressions')
    parser.add_argument(
       '--error', '-e', action='store_true',
       help=
@@ -182,23 +188,24 @@ def parse_arguments():
 
    return args
 
-def file_name(string : str):
-   if os.path.isfile(string):
-      return string
-   else:
-      raise argparse.ArgumentTypeError(f'\'{string}\' does not name a file')
-
 def run_scafaps():
    args = parse_arguments()
    log(2, f'Option settings: {vars(args)}')
 
-   try:
-      log(1, f'Reading suppressions from \'{args.suppressions}\'')
-      regexps = read_suppression_file(args.suppressions)
-      log(2, f'Suppression regexps: {regexps}')
-   except ValueError as v:
-      print(str(v))
+   if args.suppressions.is_file():
+      try:
+         log(1, f'Reading suppressions from \'{args.suppressions}\'')
+         regexps = read_suppressions_file(args.suppressions)
+         log(2, f'Suppression regexps: {regexps}')
+      except ValueError as v:
+         print(str(v))
+         sys.exit(1)
+   elif args.suppressions_file_not_found == 'error':
+      print(f'Error: File \'{args.suppressions}\' not found')
       sys.exit(1)
+   elif args.suppressions_file_not_found == 'empty':
+      log(1, f'Suppressions file \'{args.suppressions}\' not found, treating as empty file.')
+      regexps = []
 
    log(1, 'Reading input lines (SCA output) from stdin')
    lines = read_lines(sys.stdin) # TODO: allow named file to be given on command line
