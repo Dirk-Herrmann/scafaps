@@ -1,2 +1,5 @@
-Unmatched input lines: 0
++ 0: a
++ 1: b
++ 2: c
+Unmatched input lines: 3
 Unmatched suppressions: 0
