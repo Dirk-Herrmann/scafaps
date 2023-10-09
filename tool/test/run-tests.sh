@@ -20,13 +20,13 @@ ls -1 | grep '^test_' | sed 's/^test_//;s/_.*//' | uniq | while read -r t; do
    lines="test_${t}_lines.txt"
    test -e "${lines}" || lines="default_lines.txt"
    output="test_${t}_output.txt"
+   expected="test_${t}_expected.txt"
 
    script="test_${t}_script.sh"
    if test -f "$script"; then
       source "$script"
    else
       $scafaps "${suppressions}" < "${lines}" >& "${output}"
-      expected="test_${t}_expected.txt"
       validate
    fi
 done
