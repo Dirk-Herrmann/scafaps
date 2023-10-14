@@ -153,6 +153,13 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
    counts = recursiveShowDiffs(lcsTable, regexps, lines, len(regexps), len(lines))
    return counts
 
+def copyInputToOutput():
+   while True:
+      data = sys.stdin.read()
+      sys.stdout.write(data)
+      if len(data) == 0:
+         return
+
 def parse_arguments():
    parser = argparse.ArgumentParser(
       description='Suppress false positives from static code analysis.' )
@@ -161,11 +168,14 @@ def parse_arguments():
       help=
          'file with suppressions to be applied' )
    parser.add_argument(
-      '--suppressions-file-not-found', choices=['error', 'empty'], default='error',
+      '--suppressions-file-not-found',
+      choices=['error', 'empty', 'pass'], default='error',
       help=
-         'how to proceed if the suppressions-file does not exist:\n'
-         '   error: exit with error code\n'
-         '   empty: treat as empty file with no suppressions')
+         'how to proceed if the suppressions-file does not exist.  If "error" '
+         'is selected (the default), scafaps will exit with an error code.  '
+         'With "empty", scafaps will behave as if an empty suppressions-file '
+         'was given.  With "pass", stdin will be copied directly to stdout as '
+         'if scafaps was not there.')
    parser.add_argument(
       '--error', '-e', action='store_true',
       help=
@@ -200,12 +210,18 @@ def run_scafaps():
       except ValueError as v:
          print(str(v))
          sys.exit(1)
-   elif args.suppressions_file_not_found == 'error':
-      print(f'Error: File \'{args.suppressions}\' not found')
-      sys.exit(1)
-   elif args.suppressions_file_not_found == 'empty':
-      log(1, f'Suppressions file \'{args.suppressions}\' not found, treating as empty file.')
-      regexps = []
+   else:
+      notfoundmsg = f'Suppressions-file \'{args.suppressions}\' not found'
+      if args.suppressions_file_not_found == 'error':
+         print(f'Error: {notfoundmsg}')
+         sys.exit(1)
+      elif args.suppressions_file_not_found == 'empty':
+         log(1, f'{notfoundmsg}, treating it as an empty file')
+         regexps = []
+      elif args.suppressions_file_not_found == 'pass':
+         log(1, f'{notfoundmsg}, passing input data through')
+         copyInputToOutput()
+         sys.exit(0)
 
    log(1, 'Reading input lines (SCA output) from stdin')
    lines = read_lines(sys.stdin) # TODO: allow named file to be given on command line
