@@ -124,8 +124,8 @@ fi
 sed --regexp-extended '
    # protect backslashes in the original
    s/\\/\\\\/g;
-   # quote the characters .*+?[(){^$
-   s/([.*+?[(){^$])/\\&/g;
+   # quote the characters .*+?|[(){^$
+   s/([.*+?|[(){^$])/\\&/g;
    # protect lines starting with #
    s/^#/[#]/' \
 | sed --regexp-extended "
