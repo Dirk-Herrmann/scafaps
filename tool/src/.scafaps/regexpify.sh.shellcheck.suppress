@@ -1,0 +1,13 @@
+# Created for shellcheck version 0.9.0
+##############################################################################
+# Skipping errexit is intentional, the result code is checked afterwards
+
+In (.*/)?regexpify\.sh line 71:
+! getopt --test > /dev/null # will exit with 4 for enhanced getopt
+\^-- SC2251 \(info\): This ! is not on a condition and skips errexit\. Use `&& exit 1` instead, or make sure \$\? is checked\.
+
+Did you mean: 
+ getopt --test > /dev/null # will exit with 4 for enhanced getopt && exit 1
+
+For more information:
+  https://www\.shellcheck\.net/wiki/SC2251 -- This ! is not on a condition and \.\.\.
