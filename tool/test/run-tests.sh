@@ -3,6 +3,7 @@
 # Copyright (C) 2023 Dirk Herrmann
 
 scafaps=../src/scafaps.py
+regexpify=../src/regexpify.sh
 
 function validate () {
    if diff -q "${expected}" "${output}"; then

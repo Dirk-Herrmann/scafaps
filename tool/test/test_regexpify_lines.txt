@@ -1,0 +1,2 @@
+echo ${foo} | grep
+grep '[^a-b]'
