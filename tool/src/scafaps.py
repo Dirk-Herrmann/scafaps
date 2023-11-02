@@ -153,6 +153,10 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
    counts = recursiveShowDiffs(lcsTable, regexps, lines, len(regexps), len(lines))
    return counts
 
+def logDiffsSummary(level, counts):
+   log(level, f'Unmatched input lines: {counts[1]}')
+   log(level, f'Unmatched suppressions: {counts[0]}')
+
 def copyInputToOutput():
    while True:
       data = sys.stdin.read()
@@ -236,16 +240,19 @@ def run_scafaps():
    log(3, f'lcsTable: {lcsTable}')
 
    counts = showDiffsFromLcsTable(lcsTable, regexps, lines)
-   print(f'Unmatched input lines: {counts[1]}')
-   print(f'Unmatched suppressions: {counts[0]}')
 
-   if counts[1] > 0 and args.error:
-      log(1, 'There were unmatched input lines, exiting with error.')
-      sys.exit(1)
-   elif counts[0] > 0 and args.error_unused:
-      log(1, 'There were unmatched suppressions, exiting with error.')
-      sys.exit(1)
+   if counts[1] > 0:
+      logDiffsSummary(0, counts)
+      if args.error:
+         log(1, 'There were unmatched input lines, exiting with error.')
+         sys.exit(1)
+   elif counts[0] > 0:
+      logDiffsSummary(0, counts)
+      if args.error_unused:
+         log(1, 'There were unmatched suppressions, exiting with error.')
+         sys.exit(1)
    else:
+      logDiffsSummary(1, counts) # only show in verbose mode
       log(1, 'Exiting successfully.')
       sys.exit(0)
 
