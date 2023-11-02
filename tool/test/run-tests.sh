@@ -15,7 +15,9 @@ function validate () {
    fi
 }
 
-LC_ALL=C ls -1 | grep '^test_' | sed 's/^test_//;s/_.*//' | uniq | while read -r t; do
+find . -maxdepth 1 -type f -name 'test_*' -printf '%f\0' \
+| sed -z 's/^test_//;s/_.*//' | sort -z | uniq -z \
+| while IFS='' read -d '' -r t; do
    echo "About to execute test '${t}'"
 
    suppressions="test_${t}_suppressions.txt"
