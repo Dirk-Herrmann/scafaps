@@ -27,7 +27,7 @@ LC_ALL=C ls -1 | grep '^test_' | sed 's/^test_//;s/_.*//' | uniq | while read -r
    if test -f "${script}"; then
       source "${script}"
    else
-      ${scafaps} "${suppressions}" < "${lines}" >& "${output}"
+      ${scafaps} "${suppressions}" < "${lines}" >& "${output}" || true
       validate
    fi
 done
