@@ -23,10 +23,10 @@ LC_ALL=C ls -1 | grep '^test_' | sed 's/^test_//;s/_.*//' | uniq | while read -r
    expected="test_${t}_expected.txt"
 
    script="test_${t}_script.sh"
-   if test -f "$script"; then
-      source "$script"
+   if test -f "${script}"; then
+      source "${script}"
    else
-      $scafaps "${suppressions}" < "${lines}" >& "${output}"
+      ${scafaps} "${suppressions}" < "${lines}" >& "${output}"
       validate
    fi
 done
