@@ -5,7 +5,7 @@
 set -o errexit -o pipefail -o noclobber -o nounset
 
 scafaps=../src/scafaps.py
-regexpify=../src/regexpify.sh
+regexpify=../src/regexpify.sh  # for use in sourced scripts
 
 function validate () {
    if diff -q "${expected}" "${output}"; then
