@@ -21,6 +21,7 @@ LC_ALL=C ls -1 | grep '^test_' | sed 's/^test_//;s/_.*//' | uniq | while read -r
    lines="test_${t}_lines.txt"
    test -e "${lines}" || lines="default_lines.txt"
    output="test_${t}_output.txt"
+   rm -f "${output}"
    expected="test_${t}_expected.txt"
 
    script="test_${t}_script.sh"
