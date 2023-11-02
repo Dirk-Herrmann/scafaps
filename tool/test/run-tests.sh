@@ -2,6 +2,8 @@
 
 # Copyright (C) 2023 Dirk Herrmann
 
+set -o errexit -o pipefail -o noclobber -o nounset
+
 scafaps=../src/scafaps.py
 regexpify=../src/regexpify.sh
 
