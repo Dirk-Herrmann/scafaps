@@ -5,5 +5,5 @@
 # Have to re-define suppressions to non-existing file
 suppressions="test_${t}_suppressions.txt"
 
-$scafaps "${suppressions}" < "${lines}" >& "${output}" || true
+"${scafaps}" "${suppressions}" < "${lines}" >& "${output}" || true
 validate
