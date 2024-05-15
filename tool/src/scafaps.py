@@ -54,11 +54,12 @@ def read_suppressions_file(path):
             continue
          try:
             regexp = re.compile(raw_line)
-            regexps.append(Regexp(nr, raw_line, regexp))
          except re.error as e:
             errors += 1
             print(f'Error compiling suppression in line {nr}: {e.msg}')
             print(f'  Offending suppression: >>{raw_line}<<')
+         else:
+            regexps.append(Regexp(nr, raw_line, regexp))
       if errors > 0:
          raise ValueError(f'Compilation errors in {errors} suppressions')
       else:
@@ -207,13 +208,13 @@ def run_scafaps():
    log(2, f'Option settings: {vars(args)}')
 
    if args.suppressions.is_file():
+      log(1, f'Reading suppressions from \'{args.suppressions}\'')
       try:
-         log(1, f'Reading suppressions from \'{args.suppressions}\'')
          regexps = read_suppressions_file(args.suppressions)
-         log(2, f'Suppression regexps: {regexps}')
       except ValueError as v:
          print(str(v))
          sys.exit(1)
+      log(2, f'Suppression regexps: {regexps}')
    else:
       notfoundmsg = f'Suppressions-file \'{args.suppressions}\' not found'
       if args.suppressions_file_not_found == 'error':
