@@ -1,0 +1,18 @@
+# Copyright (C) 2023 Dirk Herrmann
+# Created for shellcheck version 0.9.0
+##############################################################################
+# variable is used in sourced scripts
+
+In (.*/)?run-tests\.sh line [0-9]+:
+regexpify=\.\./src/regexpify\.sh  # for use in sourced scripts
+\^-------\^ SC2034 \(warning\): regexpify appears unused\. Verify use \(or export if used externally\)\.
+
+# the set of sourced scripts is dynamically computed
+
+In \.\./\.\./tool/test/run-tests\.sh line [0-9]+:
+      source "\$\{script}"
+             \^---------\^ SC1090 \(warning\): ShellCheck can't follow non-constant source\. Use a directive to specify location\.
+
+For more information:
+  https://www\.shellcheck\.net/wiki/SC1090 -- ShellCheck can't follow non-const\.\.\.
+  https://www\.shellcheck\.net/wiki/SC2034 -- regexpify appears unused\. Verify \.\.\.
