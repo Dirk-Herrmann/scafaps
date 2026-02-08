@@ -7,7 +7,7 @@ In (.*/)?regexpify\.sh line [0-9]+:
 ! getopt --test > /dev/null # will exit with 4 for enhanced getopt
 \^-- SC2251 \(info\): This ! is not on a condition and skips errexit\. Use `&& exit 1` instead, or make sure \$\? is checked\.
 
-Did you mean: 
+Did you mean: *
  getopt --test > /dev/null # will exit with 4 for enhanced getopt && exit 1
 
 For more information:
