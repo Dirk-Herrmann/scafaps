@@ -15,12 +15,24 @@ import sys
 # 3: dev debug (show internal results)
 # 4: dev debug (show log levels)
 verbosity = 0
-def log(level, message):
+def getLogString(level, message):
    global verbosity
    if verbosity > 3:
-      print(f'LOG({level}): {message}')
+      return f'LOG({level}): {message}'
    elif level <= verbosity:
-      print(message)
+      return message
+   else:
+      return False
+
+def log(level, message):
+   logString = getLogString(level, message)
+   if logString:
+      print(logString)
+
+def logAppend(logs, level, message):
+   logString = getLogString(level, message)
+   if logString:
+      logs.append(logString)
 
 def read_raw_lines(input_file):
    # read whole file, drop \n from lines
@@ -87,6 +99,11 @@ def computeInitialMatchingSequence(regexps, lines):
 
 # TODO: Optimize time by only computing matches for fields that can actually
 # become part of the lcs
+
+# The resulting table contains the maximum number of matching lines for the
+# respective lists of lines.  That is, array[i][j] gives the maximum number of
+# matching lines found between the first i lines from the regex list and the
+# first j lines from the text lines.
 def computeLcsTable(regexps, lines):
    array = [[0] * (len(lines) + 1) for r in range(len(regexps) + 1)]
    for i in range(1, len(regexps) + 1):
@@ -97,62 +114,66 @@ def computeLcsTable(regexps, lines):
             array[i][j] = max(array[i][j-1], array[i-1][j])
    return array
 
-# TODO: Convert to iterative solution
-def recursiveShowDiffs(lcsTable, regexps, lines, i, j):
-   if i == 0 and j == 0:
-      return (0, 0)
-   elif i == 0:
-      counts = recursiveShowDiffs(lcsTable, regexps, lines, i, j-1)
-      log(3, 'Unmatched input line at head of input lines')
-      log(1, 'Unmatched input line:')
-      print(f'+ {lines[j-1].linenr}: {lines[j-1].content}')
-      return (counts[0], counts[1] + 1)
-   elif j == 0:
-      counts = recursiveShowDiffs(lcsTable, regexps, lines, i-1, j)
-      log(3, 'Unmatched suppression at head of suppressions')
-      log(1, 'Unmatched suppression:')
-      print(f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
-      return (counts[0] + 1, counts[1])
-   elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
-      # Line matches - if several possibilities exist, prefer matches against
-      # earlier lines, i.e. show diffs against later lines.
-      if lcsTable[i][j-1] == lcsTable[i][j]:
-         # Some previous line would fit as well
-         counts = recursiveShowDiffs(lcsTable, regexps, lines, i, j-1)
-         log(3, 'Deliberately preferring unmatched line over match against previous suppression')
-         log(1, 'Unmatched input line:')
-         print(f'+ {lines[j-1].linenr}: {lines[j-1].content}')
-         return (counts[0], counts[1] + 1)
-      else:
-         # Take this match
-         counts = recursiveShowDiffs(lcsTable, regexps, lines, i-1, j-1)
-         showMatch(regexps, lines, i-1, j-1)
-         return counts
-   elif lcsTable[i][j-1] > lcsTable[i-1][j]:
-      counts = recursiveShowDiffs(lcsTable, regexps, lines, i, j-1)
-      log(3, 'Unmatched input line necessary to achieve lcs')
-      log(1, 'Unmatched input line:')
-      print(f'+ {lines[j-1].linenr}: {lines[j-1].content}')
-      return (counts[0], counts[1] + 1)
-   elif lcsTable[i][j-1] == lcsTable[i][j]:
-      counts = recursiveShowDiffs(lcsTable, regexps, lines, i-1, j)
-      log(3, 'Show unmatched suppressions after unmatched lines')
-      log(1, 'Unmatched suppression:')
-      print(f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
-      return (counts[0] + 1, counts[1])
-   else:
-      assert lcsTable[i][j-1] != lcsTable[i-1][j] # not possible / covered
-      counts = recursiveShowDiffs(lcsTable, regexps, lines, i-1, j)
-      log(3, 'Unmatched suppression necessary to achieve lcs')
-      log(1, 'Unmatched suppression:')
-      print(f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
-      return (counts[0] + 1, counts[1])
-
 def showDiffsFromLcsTable(lcsTable, regexps, lines):
-   # Python's default recursion limit is only 1000
-   sys.setrecursionlimit(max(1000, len(regexps) + len(lines)))
-   counts = recursiveShowDiffs(lcsTable, regexps, lines, len(regexps), len(lines))
-   return counts
+   reversed_output = [] # will be reversed before printing
+   unmatched_regexps = 0
+   unmatched_lines   = 0
+   i = len(regexps)
+   j = len(lines)
+   while i > 0 or j > 0:
+      tmp_output = []
+      if i == 0:
+         logAppend(tmp_output, 3, 'Unmatched input line at head of input lines')
+         logAppend(tmp_output, 1, 'Unmatched input line:')
+         logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+         unmatched_lines += 1
+         j = j - 1
+      elif j == 0:
+         logAppend(tmp_output, 3, 'Unmatched suppression at head of suppressions')
+         logAppend(tmp_output, 1, 'Unmatched suppression:')
+         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         unmatched_regexps += 1
+         i = i -1
+      elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
+         # Line matches - if several possibilities exist, prefer matches against
+         # earlier lines, i.e. show diffs against later lines.
+         if lcsTable[i][j-1] == lcsTable[i][j]:
+            # Some previous line would fit as well
+            logAppend(tmp_output, 3, 'Deliberately preferring unmatched line over match against previous suppression')
+            logAppend(tmp_output, 1, 'Unmatched input line:')
+            logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+            unmatched_lines += 1
+            j = j - 1
+         else:
+            # Take this match
+            logAppend(tmp_output, 1, 'Match:')
+            logAppend(tmp_output, 1, f'~ {regexps[i-1].linenr}: {regexps[i-1].content}')
+            logAppend(tmp_output, 1, f'= {lines[j-1].linenr}: {lines[j-1].content}')
+            i = i - 1
+            j = j - 1
+      elif lcsTable[i][j-1] > lcsTable[i-1][j]:
+         logAppend(tmp_output, 3, 'Unmatched input line necessary to achieve lcs')
+         logAppend(tmp_output, 1, 'Unmatched input line:')
+         logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+         unmatched_lines += 1
+         j = j - 1
+      elif lcsTable[i][j-1] == lcsTable[i][j]:
+         logAppend(tmp_output, 3, 'Show unmatched suppressions after unmatched lines')
+         logAppend(tmp_output, 1, 'Unmatched suppression:')
+         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         unmatched_regexps += 1
+         i = i - 1
+      else:
+         assert lcsTable[i][j-1] != lcsTable[i-1][j] # not possible / covered
+         logAppend(tmp_output, 3, 'Unmatched suppression necessary to achieve lcs')
+         logAppend(tmp_output, 1, 'Unmatched suppression:')
+         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         unmatched_regexps += 1
+         i = i - 1
+      reversed_output.extend(reversed(tmp_output))
+   for message in reversed(reversed_output):
+      print(message)
+   return (unmatched_regexps, unmatched_lines)
 
 def logDiffsSummary(level, counts):
    log(level, f'Unmatched input lines: {counts[1]}')
