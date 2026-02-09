@@ -16,7 +16,7 @@ import sys
 # 4: dev debug (show internal results)
 # 5: dev debug (show log levels)
 verbosity = 0
-def getLogString(level, message):
+def get_log_string(level, message):
    global verbosity
    if verbosity > 4:
       return f'LOG({level}): {message}'
@@ -26,14 +26,14 @@ def getLogString(level, message):
       return False
 
 def log(level, message):
-   logString = getLogString(level, message)
-   if logString:
-      print(logString)
+   log_string = get_log_string(level, message)
+   if log_string:
+      print(log_string)
 
-def logAppend(logs, level, message):
-   logString = getLogString(level, message)
-   if logString:
-      logs.append(logString)
+def log_append(logs, level, message):
+   log_string = get_log_string(level, message)
+   if log_string:
+      logs.append(log_string)
 
 def read_raw_lines(input_file):
    # read whole file, drop \n from lines
@@ -78,10 +78,10 @@ def read_suppressions_file(path):
       else:
          return regexps
 
-# Function showMatch is factored out, because it is used at two different
+# Function show_match is factored out, because it is used at two different
 # places: when computing the initial matching sequence, and when showing the
 # results after computing the lcsTable
-def showMatch(regexps, lines, i, j):
+def show_match(regexps, lines, i, j):
    # show only in verbose mode
    log(2, 'Match:')
    log(1, f'~ {regexps[i].linenr}: {regexps[i].content}')
@@ -91,7 +91,7 @@ def showMatch(regexps, lines, i, j):
 def computeInitialMatchingSequence(regexps, lines):
    for index, (regexp, line) in enumerate(zip(regexps, lines)):
       if regexp.regexp.fullmatch(line.content):
-         showMatch(regexps, lines, index, index)
+         show_match(regexps, lines, index, index)
       else:
          # index of the first mismatch is the length so far
          return index
@@ -124,15 +124,15 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
    while i > 0 or j > 0:
       tmp_output = []
       if i == 0:
-         logAppend(tmp_output, 4, 'Unmatched input line at head of input lines')
-         logAppend(tmp_output, 2, 'Unmatched input line:')
-         logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+         log_append(tmp_output, 4, 'Unmatched input line at head of input lines')
+         log_append(tmp_output, 2, 'Unmatched input line:')
+         log_append(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
          unmatched_lines += 1
          j = j - 1
       elif j == 0:
-         logAppend(tmp_output, 4, 'Unmatched suppression at head of suppressions')
-         logAppend(tmp_output, 2, 'Unmatched suppression:')
-         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         log_append(tmp_output, 4, 'Unmatched suppression at head of suppressions')
+         log_append(tmp_output, 2, 'Unmatched suppression:')
+         log_append(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
          unmatched_regexps += 1
          i = i -1
       elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
@@ -140,35 +140,35 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
          # earlier lines, i.e. show diffs against later lines.
          if lcsTable[i][j-1] == lcsTable[i][j]:
             # Some previous line would fit as well
-            logAppend(tmp_output, 4, 'Deliberately preferring unmatched line over match against previous suppression')
-            logAppend(tmp_output, 2, 'Unmatched input line:')
-            logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+            log_append(tmp_output, 4, 'Deliberately preferring unmatched line over match against previous suppression')
+            log_append(tmp_output, 2, 'Unmatched input line:')
+            log_append(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
             unmatched_lines += 1
             j = j - 1
          else:
             # Take this match
-            logAppend(tmp_output, 2, 'Match:')
-            logAppend(tmp_output, 1, f'~ {regexps[i-1].linenr}: {regexps[i-1].content}')
-            logAppend(tmp_output, 1, f'= {lines[j-1].linenr}: {lines[j-1].content}')
+            log_append(tmp_output, 2, 'Match:')
+            log_append(tmp_output, 1, f'~ {regexps[i-1].linenr}: {regexps[i-1].content}')
+            log_append(tmp_output, 1, f'= {lines[j-1].linenr}: {lines[j-1].content}')
             i = i - 1
             j = j - 1
       elif lcsTable[i][j-1] > lcsTable[i-1][j]:
-         logAppend(tmp_output, 4, 'Unmatched input line necessary to achieve lcs')
-         logAppend(tmp_output, 2, 'Unmatched input line:')
-         logAppend(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
+         log_append(tmp_output, 4, 'Unmatched input line necessary to achieve lcs')
+         log_append(tmp_output, 2, 'Unmatched input line:')
+         log_append(tmp_output, 0, f'+ {lines[j-1].linenr}: {lines[j-1].content}')
          unmatched_lines += 1
          j = j - 1
       elif lcsTable[i][j-1] == lcsTable[i][j]:
-         logAppend(tmp_output, 4, 'Show unmatched suppressions after unmatched lines')
-         logAppend(tmp_output, 2, 'Unmatched suppression:')
-         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         log_append(tmp_output, 4, 'Show unmatched suppressions after unmatched lines')
+         log_append(tmp_output, 2, 'Unmatched suppression:')
+         log_append(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
          unmatched_regexps += 1
          i = i - 1
       else:
          assert lcsTable[i][j-1] != lcsTable[i-1][j] # not possible / covered
-         logAppend(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
-         logAppend(tmp_output, 2, 'Unmatched suppression:')
-         logAppend(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
+         log_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
+         log_append(tmp_output, 2, 'Unmatched suppression:')
+         log_append(tmp_output, 0, f'- {regexps[i-1].linenr}: {regexps[i-1].content}')
          unmatched_regexps += 1
          i = i - 1
       reversed_output.extend(reversed(tmp_output))
