@@ -119,63 +119,80 @@ def computeLcsTable(regexps, lines):
             array[i][j] = max(array[i][j-1], array[i-1][j])
    return array
 
+# Iterate through the lcs table and show the diff results.  The table is
+# traversed from the end of the table to its origin.  The output, in contrast,
+# shall be printed from the first lines to the last.  For this reason, the
+# output is created in a list and only finally printed in the proper order.
 def showDiffsFromLcsTable(lcsTable, regexps, lines):
    reversed_output = [] # will be reversed before printing
+
    unmatched_regexps = 0
-   unmatched_lines   = 0
+   unmatched_lines = 0
+
    i = len(regexps)
    j = len(lines)
    while i > 0 or j > 0:
+      # within the loop, the output collected in a small list (tmp_output) and
+      # at the end of each iteration added to the function's overall output.
       tmp_output = []
+
+      # constant identifiers for possible results, used only within loop body
+      UNMATCHED_INPUT_LINE  = 0
+      UNMATCHED_SUPPRESSION = 1
+      MATCH                 = 2
+
+      # discriminate the different scenarios for lcs table index i,j
       if i == 0:
          log_append(tmp_output, 4, 'Unmatched input line at head of input lines')
-         log_append(tmp_output, 2, 'Unmatched input line:')
-         log_append(tmp_output, 0, f'+ {get_line_outstring(lines[j-1])}')
-         unmatched_lines += 1
-         j = j - 1
+         result = UNMATCHED_INPUT_LINE
       elif j == 0:
          log_append(tmp_output, 4, 'Unmatched suppression at head of suppressions')
-         log_append(tmp_output, 2, 'Unmatched suppression:')
-         log_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
-         unmatched_regexps += 1
-         i = i -1
+         result = UNMATCHED_SUPPRESSION
       elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
          # Line matches - if several possibilities exist, prefer matches against
          # earlier lines, i.e. show diffs against later lines.
          if lcsTable[i][j-1] == lcsTable[i][j]:
             # Some previous line would fit as well
-            log_append(tmp_output, 4, 'Deliberately preferring unmatched line over match against previous suppression')
-            log_append(tmp_output, 2, 'Unmatched input line:')
-            log_append(tmp_output, 0, f'+ {get_line_outstring(lines[j-1])}')
-            unmatched_lines += 1
-            j = j - 1
+            log_append(tmp_output, 4, 'Deliberately preferring unmatched line')
+            result = UNMATCHED_INPUT_LINE
+         elif lcsTable[i-1][j] == lcsTable[i][j]:
+            # Some previous suppression would fit as well
+            log_append(tmp_output, 4, 'Deliberately preferring unmatched suppression')
+            result = UNMATCHED_SUPPRESSION
          else:
-            # Take this match
-            log_append(tmp_output, 2, 'Match:')
-            log_append(tmp_output, 1, f'~ {get_line_outstring(regexps[i-1])}')
-            log_append(tmp_output, 1, f'= {get_line_outstring(lines[j-1])}')
-            i = i - 1
-            j = j - 1
+            result = MATCH
       elif lcsTable[i][j-1] > lcsTable[i-1][j]:
          log_append(tmp_output, 4, 'Unmatched input line necessary to achieve lcs')
+         result = UNMATCHED_INPUT_LINE
+      elif lcsTable[i][j-1] == lcsTable[i-1][j]:
+         log_append(tmp_output, 4, 'Show unmatched suppressions before unmatched lines')
+         result = UNMATCHED_INPUT_LINE
+      else:
+         assert lcsTable[i][j-1] < lcsTable[i-1][j]
+         log_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
+         result = UNMATCHED_SUPPRESSION
+
+      # write log and update variables according to result
+      if result == UNMATCHED_SUPPRESSION:
+         log_append(tmp_output, 2, 'Unmatched suppression:')
+         log_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
+         unmatched_regexps += 1
+         i = i - 1
+      elif result == UNMATCHED_INPUT_LINE:
          log_append(tmp_output, 2, 'Unmatched input line:')
          log_append(tmp_output, 0, f'+ {get_line_outstring(lines[j-1])}')
          unmatched_lines += 1
          j = j - 1
-      elif lcsTable[i][j-1] == lcsTable[i][j]:
-         log_append(tmp_output, 4, 'Show unmatched suppressions after unmatched lines')
-         log_append(tmp_output, 2, 'Unmatched suppression:')
-         log_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
-         unmatched_regexps += 1
+      else: # result == MATCH
+         log_append(tmp_output, 2, 'Match:')
+         log_append(tmp_output, 1, f'~ {get_line_outstring(regexps[i-1])}')
+         log_append(tmp_output, 1, f'= {get_line_outstring(lines[j-1])}')
          i = i - 1
-      else:
-         assert lcsTable[i][j-1] != lcsTable[i-1][j] # not possible / covered
-         log_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
-         log_append(tmp_output, 2, 'Unmatched suppression:')
-         log_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
-         unmatched_regexps += 1
-         i = i - 1
+         j = j - 1
+
+      # add the output from the loop body to the function's overall output
       reversed_output.extend(reversed(tmp_output))
+
    for message in reversed(reversed_output):
       print(message)
    return (unmatched_regexps, unmatched_lines)
