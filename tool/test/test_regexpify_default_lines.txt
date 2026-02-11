@@ -1,2 +1,17 @@
+ASCII printable chars, starting with space:
+ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+
+Backslashes:
+\ \ \\
+
+Regexp special characters:
+.*+?|[(){^$
+
+Comment lines:
+# comment
+ # no comment
+## comment
+
+Miscellaneous examples:
 echo ${foo} | grep
 grep '[^a-b]'
