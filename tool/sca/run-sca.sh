@@ -2,7 +2,7 @@
 
 # Copyright (C) 2023 Dirk Herrmann
 
-set -o errexit -o pipefail -o noclobber -o nounset
+set -o noclobber -o nounset
 
 rootdir=../../
 scafaps="${rootdir}/tool/src/scafaps.py"
@@ -18,6 +18,17 @@ find "${rootdir}" \
    scriptdir="$(dirname "${scriptfullname}")"
    scriptname="$(basename "${scriptfullname}")"
    scafapsfile="${scriptdir}/.scafaps/${scriptname}.shellcheck.suppress"
-   { shellcheck -o all "${scriptfullname}" || true; } \
-      | ${scafaps} --suppressions-file-not-found=pass "${scafapsfile}"
+   shellcheck -o all "${scriptfullname}" \
+      | # add --verbose option to see also the matching line pairs:
+        ${scafaps} --verbose --suppressions-file-not-found=empty "${scafapsfile}" \
+      | # of the matching line pairs, keep the input lines, drop the regexps
+        grep -v '^[~]' \
+      | # filter the mismatches with some context lines before and after
+        grep -B 5 -A 2 '^[-+]' \
+      | # color unmatched regexps in red.  --color=always needed as grep does
+        # otherwise not add color when writing to a pipe.  We keep also the
+        # non-regexp lines by alternative match against '$'.
+        GREP_COLORS='ms=01;31' grep -E --color=always '^[-].*|$' \
+      | # similarly with green for unmatched lines
+        GREP_COLORS='ms=01;32' grep -E --color=always '^[+].*|$'
 done
