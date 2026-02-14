@@ -18,7 +18,7 @@ import sys
 verbosity = 0 # will be set by parse_arguments
 def get_log_string(level, message):
    global verbosity
-   if verbosity > 4:
+   if verbosity >= 5:
       return f'LOG({level}): {message}'
    elif level <= verbosity:
       return message
@@ -26,13 +26,11 @@ def get_log_string(level, message):
       return False
 
 def log(level, message):
-   log_string = get_log_string(level, message)
-   if log_string:
+   if (log_string := get_log_string(level, message)):
       print(log_string)
 
 def log_append(logs, level, message):
-   log_string = get_log_string(level, message)
-   if log_string:
+   if (log_string := get_log_string(level, message)):
       logs.append(log_string)
 
 def read_raw_lines(input_file):
@@ -84,7 +82,7 @@ def get_line_outstring(line):
 
 # Function show_match is factored out, because it is used at two different
 # places: when computing the initial matching sequence, and when showing the
-# results after computing the lcsTable
+# results after computing the lcs_table
 def show_match(regexps, lines, i, j):
    # show only in verbose mode
    log(2, 'Match:')
@@ -92,7 +90,7 @@ def show_match(regexps, lines, i, j):
    log(1, f'= {get_line_outstring(lines[j])}')
 
 # Find and show matches between regexps[i] and lines[i] for i=0..
-def computeInitialMatchingSequence(regexps, lines):
+def compute_initial_matching_sequence(regexps, lines):
    for index, (regexp, line) in enumerate(zip(regexps, lines)):
       if regexp.regexp.fullmatch(line.content):
          show_match(regexps, lines, index, index)
@@ -109,7 +107,7 @@ def computeInitialMatchingSequence(regexps, lines):
 # respective lists of lines.  That is, array[i][j] gives the maximum number of
 # matching lines found between the first i lines from the regex list and the
 # first j lines from the text lines.
-def computeLcsTable(regexps, lines):
+def compute_lcs_table(regexps, lines):
    array = [[0] * (len(lines) + 1) for r in range(len(regexps) + 1)]
    for i in range(1, len(regexps) + 1):
       for j in range(1, len(lines) + 1):
@@ -123,7 +121,7 @@ def computeLcsTable(regexps, lines):
 # traversed from the end of the table to its origin.  The output, in contrast,
 # shall be printed from the first lines to the last.  For this reason, the
 # output is created in a list and only finally printed in the proper order.
-def showDiffsFromLcsTable(lcsTable, regexps, lines):
+def show_diffs_from_lcs_table(lcs_table, regexps, lines):
    reversed_output = [] # will be reversed before printing
 
    unmatched_regexps = 0
@@ -151,24 +149,24 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
       elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
          # Line matches - if several possibilities exist, prefer matches against
          # earlier lines, i.e. show diffs against later lines.
-         if lcsTable[i][j-1] == lcsTable[i][j]:
+         if lcs_table[i][j-1] == lcs_table[i][j]:
             # Some previous line would fit as well
             log_append(tmp_output, 4, 'Deliberately preferring unmatched line')
             result = UNMATCHED_INPUT_LINE
-         elif lcsTable[i-1][j] == lcsTable[i][j]:
+         elif lcs_table[i-1][j] == lcs_table[i][j]:
             # Some previous suppression would fit as well
             log_append(tmp_output, 4, 'Deliberately preferring unmatched suppression')
             result = UNMATCHED_SUPPRESSION
          else:
             result = MATCH
-      elif lcsTable[i][j-1] > lcsTable[i-1][j]:
+      elif lcs_table[i][j-1] > lcs_table[i-1][j]:
          log_append(tmp_output, 4, 'Unmatched input line necessary to achieve lcs')
          result = UNMATCHED_INPUT_LINE
-      elif lcsTable[i][j-1] == lcsTable[i-1][j]:
+      elif lcs_table[i][j-1] == lcs_table[i-1][j]:
          log_append(tmp_output, 4, 'Show unmatched suppressions before unmatched lines')
          result = UNMATCHED_INPUT_LINE
       else:
-         assert lcsTable[i][j-1] < lcsTable[i-1][j]
+         assert lcs_table[i][j-1] < lcs_table[i-1][j]
          log_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
          result = UNMATCHED_SUPPRESSION
 
@@ -177,18 +175,18 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
          log_append(tmp_output, 2, 'Unmatched suppression:')
          log_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
          unmatched_regexps += 1
-         i = i - 1
+         i -= 1
       elif result == UNMATCHED_INPUT_LINE:
          log_append(tmp_output, 2, 'Unmatched input line:')
          log_append(tmp_output, 0, f'+ {get_line_outstring(lines[j-1])}')
          unmatched_lines += 1
-         j = j - 1
+         j -= 1
       else: # result == MATCH
          log_append(tmp_output, 2, 'Match:')
          log_append(tmp_output, 1, f'~ {get_line_outstring(regexps[i-1])}')
          log_append(tmp_output, 1, f'= {get_line_outstring(lines[j-1])}')
-         i = i - 1
-         j = j - 1
+         i -= 1
+         j -= 1
 
       # add the output from the loop body to the function's overall output
       reversed_output.extend(reversed(tmp_output))
@@ -197,11 +195,11 @@ def showDiffsFromLcsTable(lcsTable, regexps, lines):
       print(message)
    return (unmatched_regexps, unmatched_lines)
 
-def logDiffsSummary(level, counts):
+def log_diffs_summary(level, counts):
    log(level, f'Unmatched input lines: {counts[1]}')
    log(level, f'Unmatched suppressions: {counts[0]}')
 
-def copyInputToOutput():
+def copy_input_to_output():
    while True:
       data = sys.stdin.read()
       sys.stdout.write(data)
@@ -268,7 +266,7 @@ def run_scafaps():
          regexps = []
       elif args.suppressions_file_not_found == 'pass':
          log(1, f'{notfoundmsg}, passing input data through')
-         copyInputToOutput()
+         copy_input_to_output()
          sys.exit(0)
 
    log(1, 'Reading input lines (SCA output) from stdin')
@@ -280,28 +278,28 @@ def run_scafaps():
    max_regexps_linenr = regexps[-1].linenr if regexps else 0
    max_linenr_width = len(str(max(max_lines_linenr, max_regexps_linenr)))
 
-   skip = computeInitialMatchingSequence(regexps, lines)
+   skip = compute_initial_matching_sequence(regexps, lines)
    log(4, f'initial matching sequence length: {skip}')
    regexps = regexps[skip:]
    lines   = lines[skip:]
 
-   lcsTable = computeLcsTable(regexps, lines)
-   log(4, f'lcsTable: {lcsTable}')
+   lcs_table = compute_lcs_table(regexps, lines)
+   log(4, f'lcs_table: {lcs_table}')
 
-   counts = showDiffsFromLcsTable(lcsTable, regexps, lines)
+   counts = show_diffs_from_lcs_table(lcs_table, regexps, lines)
 
    if counts[1] > 0:
-      logDiffsSummary(0, counts)
+      log_diffs_summary(0, counts)
       if args.error:
          log(1, 'There were unmatched input lines, exiting with error.')
          sys.exit(1)
    elif counts[0] > 0:
-      logDiffsSummary(0, counts)
+      log_diffs_summary(0, counts)
       if args.error_unused:
          log(1, 'There were unmatched suppressions, exiting with error.')
          sys.exit(1)
    else:
-      logDiffsSummary(1, counts) # only show in verbose mode
+      log_diffs_summary(1, counts) # only show in verbose mode
       log(1, 'Exiting successfully.')
       sys.exit(0)
 
