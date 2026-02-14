@@ -25,10 +25,10 @@ find "${rootdir}" \
         grep -v '^[~]' \
       | # filter the mismatches with some context lines before and after
         grep -B 5 -A 2 '^[-+]' \
-      | # color unmatched regexps in red.  --color=always needed as grep does
-        # otherwise not add color when writing to a pipe.  We keep also the
-        # non-regexp lines by alternative match against '$'.
-        GREP_COLORS='ms=01;31' grep -E --color=always '^[-].*|$' \
-      | # similarly with green for unmatched lines
-        GREP_COLORS='ms=01;32' grep -E --color=always '^[+].*|$'
+      | # color unmatched sca output lines in red.  --color=always needed as
+        # grep does otherwise not add color when writing to a pipe.  We keep
+        # also the suppression lines by alternative match against '$'.
+        GREP_COLORS='ms=01;31' grep -E --color=always '^[+].*|$' \
+      | # similarly with green for unmatched suppression lines
+        GREP_COLORS='ms=01;32' grep -E --color=always '^[-].*|$'
 done
