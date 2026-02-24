@@ -199,9 +199,9 @@ def log_diffs_summary(level, counts):
    log(level, f'Unmatched input lines: {counts[1]}')
    log(level, f'Unmatched suppressions: {counts[0]}')
 
-def copy_input_to_output():
+def copy_input_to_output(input_file):
    while True:
-      data = sys.stdin.read()
+      data = input_file.read()
       sys.stdout.write(data)
       if len(data) == 0:
          return
@@ -266,7 +266,7 @@ def run_scafaps():
          regexps = []
       elif args.suppressions_file_not_found == 'pass':
          log(1, f'{notfoundmsg}, passing input data through')
-         copy_input_to_output()
+         copy_input_to_output(sys.stdin)
          sys.exit(0)
 
    log(1, 'Reading input lines (SCA output) from stdin')
