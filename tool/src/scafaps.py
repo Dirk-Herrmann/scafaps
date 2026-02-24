@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2023 Dirk Herrmann
+# Copyright (C) 2023-2026 Dirk Herrmann
 
 import argparse
 import dataclasses
@@ -52,16 +52,18 @@ class Regexp:
    linenr: int
    content: str
    regexp: re.Pattern
+   comments: list
 
 # TODO: Allow convenience patterns in suppressions, like %path%
 def read_suppressions_file(path):
    with open(path) as input_file:
       raw_lines = read_raw_lines(input_file)
       regexps = []
+      comments = []
       errors = 0
       for nr, raw_line in enumerate(raw_lines):
          if len(raw_line) > 0 and raw_line[0] == "#":
-            # ignore comment lines and shebang line
+            comments.append(raw_line)
             continue
          try:
             regexp = re.compile(raw_line)
@@ -70,7 +72,8 @@ def read_suppressions_file(path):
             print(f'Error compiling suppression in line {nr}: {e.msg}')
             print(f'  Offending suppression: >>{raw_line}<<')
          else:
-            regexps.append(Regexp(nr, raw_line, regexp))
+            regexps.append(Regexp(nr, raw_line, regexp, comments))
+            comments = []
       if errors > 0:
          raise ValueError(f'Compilation errors in {errors} suppressions')
       else:
