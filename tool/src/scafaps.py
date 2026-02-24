@@ -16,22 +16,18 @@ import sys
 # 4: dev debug (show internal results)
 # 5: dev debug (show verbosity levels)
 verbosity = 0 # will be set by parse_arguments
-def get_output_string(level, message):
+def maybe_get_output(level, message):
    global verbosity
    if verbosity >= 5:
-      return f'Verbosity({level}): {message}'
+      return [f'Verbosity({level}): {message}']
    elif level <= verbosity:
-      return message
+      return [message]
    else:
-      return False
+      return []
 
 def output(level, message):
-   if (output_string := get_output_string(level, message)):
-      print(output_string)
-
-def output_append(output_lines, level, message):
-   if (output_string := get_output_string(level, message)):
-      output_lines.append(output_string)
+   if (output_list := maybe_get_output(level, message)):
+      print(output_list[0])
 
 def read_raw_lines(input_file):
    # read whole file, drop \n from lines
@@ -86,14 +82,14 @@ def get_numbered_output_string(prefix, line):
 def get_comments_output(comments):
    output = []
    for comment in comments:
-      output_append(output, 1, get_numbered_output_string('#', comment))
+      output += maybe_get_output(1, get_numbered_output_string('#', comment))
    return output
 
 def get_match_output(regexps, lines, i, j):
-   output = get_comments_output(regexps[i].comments)
-   output_append(output, 2, 'Match:')
-   output_append(output, 1, get_numbered_output_string('~', regexps[i]))
-   output_append(output, 1, get_numbered_output_string('=', lines[j]))
+   output =  get_comments_output(regexps[i].comments)
+   output += maybe_get_output(2, 'Match:')
+   output += maybe_get_output(1, get_numbered_output_string('~', regexps[i]))
+   output += maybe_get_output(1, get_numbered_output_string('=', lines[j]))
    return output
 
 # Find and show matches between regexps[i] and lines[i] for i=0..
@@ -149,56 +145,55 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
 
       # discriminate the different scenarios for lcs table index i,j
       if i == 0:
-         output_append(tmp_output, 4, 'Unmatched input line at head of input lines')
+         tmp_output = maybe_get_output(4, 'Unmatched input line at head of input lines')
          result = UNMATCHED_INPUT_LINE
       elif j == 0:
-         tmp_output.extend(get_comments_output(regexps[i-1].comments))
-         output_append(tmp_output, 4, 'Unmatched suppression at head of suppressions')
+         tmp_output = maybe_get_output(4, 'Unmatched suppression at head of suppressions')
          result = UNMATCHED_SUPPRESSION
       elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
          # Line matches - if several possibilities exist, prefer matches against
          # earlier lines, i.e. show diffs against later lines.
          if lcs_table[i][j-1] == lcs_table[i][j]:
             # Some previous line would fit as well
-            output_append(tmp_output, 4, 'Deliberately preferring unmatched line')
+            tmp_output = maybe_get_output(4, 'Deliberately preferring unmatched line')
             result = UNMATCHED_INPUT_LINE
          elif lcs_table[i-1][j] == lcs_table[i][j]:
             # Some previous suppression would fit as well
-            tmp_output.extend(get_comments_output(regexps[i-1].comments))
-            output_append(tmp_output, 4, 'Deliberately preferring unmatched suppression')
+            tmp_output = maybe_get_output(4, 'Deliberately preferring unmatched suppression')
             result = UNMATCHED_SUPPRESSION
          else:
             result = MATCH
       elif lcs_table[i][j-1] > lcs_table[i-1][j]:
-         output_append(tmp_output, 4, 'Unmatched input line necessary to achieve lcs')
+         tmp_output = maybe_get_output(4, 'Unmatched input line necessary to achieve lcs')
          result = UNMATCHED_INPUT_LINE
       elif lcs_table[i][j-1] == lcs_table[i-1][j]:
-         output_append(tmp_output, 4, 'Show unmatched suppressions before unmatched lines')
+         tmp_output = maybe_get_output(4, 'Show unmatched suppressions before unmatched lines')
          result = UNMATCHED_INPUT_LINE
       else:
          assert lcs_table[i][j-1] < lcs_table[i-1][j]
-         tmp_output.extend(get_comments_output(regexps[i-1].comments))
-         output_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
+         tmp_output = maybe_get_output(4, 'Unmatched suppression necessary to achieve lcs')
          result = UNMATCHED_SUPPRESSION
 
       # write output and update variables according to result
       if result == UNMATCHED_SUPPRESSION:
-         output_append(tmp_output, 2, 'Unmatched suppression:')
-         output_append(tmp_output, 0, get_numbered_output_string('-', regexps[i-1]))
+         # prepend comment lines from suppression file to possible debug messages
+         tmp_output =  get_comments_output(regexps[i-1].comments) + tmp_output
+         tmp_output += maybe_get_output(2, 'Unmatched suppression:')
+         tmp_output += maybe_get_output(0, get_numbered_output_string('-', regexps[i-1]))
          unmatched_regexps += 1
          i -= 1
       elif result == UNMATCHED_INPUT_LINE:
-         output_append(tmp_output, 2, 'Unmatched input line:')
-         output_append(tmp_output, 0, get_numbered_output_string('+', lines[j-1]))
+         tmp_output += maybe_get_output(2, 'Unmatched input line:')
+         tmp_output += maybe_get_output(0, get_numbered_output_string('+', lines[j-1]))
          unmatched_lines += 1
          j -= 1
       else: # result == MATCH
-         tmp_output.extend(get_match_output(regexps, lines, i-1, j-1))
+         tmp_output += get_match_output(regexps, lines, i-1, j-1)
          i -= 1
          j -= 1
 
       # add the output from the loop body to the function's overall output
-      reversed_output.extend(reversed(tmp_output))
+      reversed_output += reversed(tmp_output)
 
    for message in reversed(reversed_output):
       print(message)
