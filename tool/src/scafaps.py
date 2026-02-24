@@ -174,7 +174,7 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
          tmp_output = maybe_get_output(4, 'Unmatched suppression necessary to achieve lcs')
          result = UNMATCHED_SUPPRESSION
 
-      # write output and update variables according to result
+      # extend output and update variables according to result
       if result == UNMATCHED_SUPPRESSION:
          # prepend comment lines from suppression file to possible debug messages
          tmp_output =  get_comments_output(regexps[i-1].comments) + tmp_output
