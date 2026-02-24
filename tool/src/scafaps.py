@@ -80,26 +80,28 @@ def read_suppressions_file(path):
          return regexps, comments
 
 max_linenr_width = 0 # will be set by run_scafaps
-def get_numbered_outstring(prefix, content):
-   return f'{prefix} {line.linenr:{max_linenr_width}}: {content}'
+def get_numbered_output_string(prefix, line):
+   return f'{prefix} {line.linenr:{max_linenr_width}}: {line.content}'
 
-def get_line_outstring(line):
-   return f'{line.linenr:{max_linenr_width}}: {line.content}'
+def get_comments_output(comments):
+   output = []
+   for comment in comments:
+      output_append(output, 1, get_numbered_output_string('#', comment))
+   return output
 
-# Function show_match is factored out, because it is used at two different
-# places: when computing the initial matching sequence, and when showing the
-# results after computing the lcs_table
-def show_match(regexps, lines, i, j):
-   # show only in verbose mode
-   output(2, 'Match:')
-   output(1, f'~ {get_line_outstring(regexps[i])}')
-   output(1, f'= {get_line_outstring(lines[j])}')
+def get_match_output(regexps, lines, i, j):
+   output = get_comments_output(regexps[i].comments)
+   output_append(output, 2, 'Match:')
+   output_append(output, 1, get_numbered_output_string('~', regexps[i]))
+   output_append(output, 1, get_numbered_output_string('=', lines[j]))
+   return output
 
 # Find and show matches between regexps[i] and lines[i] for i=0..
 def compute_initial_matching_sequence(regexps, lines):
    for index, (regexp, line) in enumerate(zip(regexps, lines)):
       if regexp.regexp.fullmatch(line.content):
-         show_match(regexps, lines, index, index)
+         for message in get_match_output(regexps, lines, index, index):
+            print(message)
       else:
          # index of the first mismatch is the length so far
          return index
@@ -150,6 +152,7 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
          output_append(tmp_output, 4, 'Unmatched input line at head of input lines')
          result = UNMATCHED_INPUT_LINE
       elif j == 0:
+         tmp_output.extend(get_comments_output(regexps[i-1].comments))
          output_append(tmp_output, 4, 'Unmatched suppression at head of suppressions')
          result = UNMATCHED_SUPPRESSION
       elif regexps[i-1].regexp.fullmatch(lines[j-1].content):
@@ -161,6 +164,7 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
             result = UNMATCHED_INPUT_LINE
          elif lcs_table[i-1][j] == lcs_table[i][j]:
             # Some previous suppression would fit as well
+            tmp_output.extend(get_comments_output(regexps[i-1].comments))
             output_append(tmp_output, 4, 'Deliberately preferring unmatched suppression')
             result = UNMATCHED_SUPPRESSION
          else:
@@ -173,24 +177,23 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
          result = UNMATCHED_INPUT_LINE
       else:
          assert lcs_table[i][j-1] < lcs_table[i-1][j]
+         tmp_output.extend(get_comments_output(regexps[i-1].comments))
          output_append(tmp_output, 4, 'Unmatched suppression necessary to achieve lcs')
          result = UNMATCHED_SUPPRESSION
 
       # write output and update variables according to result
       if result == UNMATCHED_SUPPRESSION:
          output_append(tmp_output, 2, 'Unmatched suppression:')
-         output_append(tmp_output, 0, f'- {get_line_outstring(regexps[i-1])}')
+         output_append(tmp_output, 0, get_numbered_output_string('-', regexps[i-1]))
          unmatched_regexps += 1
          i -= 1
       elif result == UNMATCHED_INPUT_LINE:
          output_append(tmp_output, 2, 'Unmatched input line:')
-         output_append(tmp_output, 0, f'+ {get_line_outstring(lines[j-1])}')
+         output_append(tmp_output, 0, get_numbered_output_string('+', lines[j-1]))
          unmatched_lines += 1
          j -= 1
       else: # result == MATCH
-         output_append(tmp_output, 2, 'Match:')
-         output_append(tmp_output, 1, f'~ {get_line_outstring(regexps[i-1])}')
-         output_append(tmp_output, 1, f'= {get_line_outstring(lines[j-1])}')
+         tmp_output.extend(get_match_output(regexps, lines, i-1, j-1))
          i -= 1
          j -= 1
 
@@ -269,7 +272,7 @@ def run_scafaps():
          sys.exit(1)
       elif args.suppressions_file_not_found == 'empty':
          output(1, f'{notfoundmsg}, treating it as an empty file')
-         regexps = []
+         regexps, tail_comments = [], []
       elif args.suppressions_file_not_found == 'pass':
          output(1, f'{notfoundmsg}, passing input data through')
          copy_input_to_output(sys.stdin)
@@ -282,7 +285,9 @@ def run_scafaps():
    global max_linenr_width
    max_lines_linenr = lines[-1].linenr if lines else 0
    max_regexps_linenr = regexps[-1].linenr if regexps else 0
-   max_linenr_width = len(str(max(max_lines_linenr, max_regexps_linenr)))
+   max_comments_linenr = tail_comments[-1].linenr if tail_comments else 0
+   max_linenr_width = len(str(
+      max(max_lines_linenr, max_regexps_linenr, max_comments_linenr)))
 
    skip = compute_initial_matching_sequence(regexps, lines)
    output(4, f'initial matching sequence length: {skip}')
@@ -293,6 +298,8 @@ def run_scafaps():
    output(4, f'lcs_table: {lcs_table}')
 
    counts = show_diffs_from_lcs_table(lcs_table, regexps, lines)
+   for message in get_comments_output(tail_comments):
+      print(message)
 
    if counts[1] > 0:
       output_diffs_summary(0, counts)
