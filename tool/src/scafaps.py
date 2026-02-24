@@ -63,7 +63,7 @@ def read_suppressions_file(path):
       errors = 0
       for nr, raw_line in enumerate(raw_lines):
          if len(raw_line) > 0 and raw_line[0] == "#":
-            comments.append(raw_line)
+            comments.append(Line(nr, raw_line))
             continue
          try:
             regexp = re.compile(raw_line)
@@ -77,9 +77,12 @@ def read_suppressions_file(path):
       if errors > 0:
          raise ValueError(f'Compilation errors in {errors} suppressions')
       else:
-         return regexps
+         return regexps, comments
 
 max_linenr_width = 0 # will be set by run_scafaps
+def get_numbered_outstring(prefix, content):
+   return f'{prefix} {line.linenr:{max_linenr_width}}: {content}'
+
 def get_line_outstring(line):
    return f'{line.linenr:{max_linenr_width}}: {line.content}'
 
@@ -254,7 +257,7 @@ def run_scafaps():
    if args.suppressions.is_file():
       output(1, f'Reading suppressions from \'{args.suppressions}\'')
       try:
-         regexps = read_suppressions_file(args.suppressions)
+         regexps, tail_comments = read_suppressions_file(args.suppressions)
       except ValueError as v:
          print(str(v))
          sys.exit(1)
