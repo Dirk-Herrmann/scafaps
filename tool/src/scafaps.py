@@ -47,6 +47,7 @@ def read_lines(input_file):
 class Regexp:
    linenr: int
    content: str
+   valid: bool
    regexp: re.Pattern
    comments: list
 
@@ -57,6 +58,7 @@ def read_suppressions_file(path):
       regexps = []
       comments = []
       errors = 0
+      never_matches = re.compile("$a")
       for nr, raw_line in enumerate(raw_lines):
          if len(raw_line) > 0 and raw_line[0] == "#":
             comments.append(Line(nr, raw_line))
@@ -67,17 +69,18 @@ def read_suppressions_file(path):
             errors += 1
             print(f'Error compiling suppression in line {nr}: {e.msg}')
             print(f'  Offending suppression: >>{raw_line}<<')
+            regexps.append(Regexp(
+               nr, raw_line, False, never_matches, comments))
          else:
-            regexps.append(Regexp(nr, raw_line, regexp, comments))
+            regexps.append(Regexp(
+               nr, raw_line, True, regexp, comments))
             comments = []
-      if errors > 0:
-         raise ValueError(f'Compilation errors in {errors} suppressions')
-      else:
-         return regexps, comments
+      return regexps, comments, errors
 
 max_linenr_width = 0 # will be set by run_scafaps
-def get_numbered_output_string(prefix, line):
-   return f'{prefix} {line.linenr:{max_linenr_width}}: {line.content}'
+def get_numbered_output_string(prefix, line, valid=True):
+   error_indicator = ' ' if valid else '*'
+   return f'{prefix}{error_indicator}{line.linenr:{max_linenr_width}}: {line.content}'
 
 def get_comments_output(comments):
    output = []
@@ -90,6 +93,14 @@ def get_match_output(regexps, lines, i, j):
    output += maybe_get_output(2, 'Match:')
    output += maybe_get_output(1, get_numbered_output_string('~', regexps[i]))
    output += maybe_get_output(1, get_numbered_output_string('=', lines[j]))
+   return output
+
+def get_unmatched_suppression_output(debug_msgs, regexp):
+   # prepend comment lines from suppression file to possible debug messages
+   output =  get_comments_output(regexp.comments) + debug_msgs
+   output += maybe_get_output(2, 'Unmatched suppression:')
+   valid  = regexp.valid # indicate whether the suppression could be compiled
+   output += maybe_get_output(0, get_numbered_output_string('-', regexp, valid=valid))
    return output
 
 # Find and show matches between regexps[i] and lines[i] for i=0..
@@ -176,10 +187,7 @@ def show_diffs_from_lcs_table(lcs_table, regexps, lines):
 
       # extend output and update variables according to result
       if result == UNMATCHED_SUPPRESSION:
-         # prepend comment lines from suppression file to possible debug messages
-         tmp_output =  get_comments_output(regexps[i-1].comments) + tmp_output
-         tmp_output += maybe_get_output(2, 'Unmatched suppression:')
-         tmp_output += maybe_get_output(0, get_numbered_output_string('-', regexps[i-1]))
+         tmp_output = get_unmatched_suppression_output(tmp_output, regexps[i-1])
          unmatched_regexps += 1
          i -= 1
       elif result == UNMATCHED_INPUT_LINE:
@@ -227,6 +235,10 @@ def parse_arguments():
          'was given.  With "pass", stdin will be copied directly to stdout as '
          'if scafaps was not there.')
    parser.add_argument(
+      '--keep-going-with-compile-errors', action='store_true',
+      help=
+         'keep going even if there are errors when compiling suppressions' )
+   parser.add_argument(
       '--error', '-e', action='store_true',
       help=
          'exit with error if unsuppressed output remains' )
@@ -254,11 +266,11 @@ def run_scafaps():
 
    if args.suppressions.is_file():
       output(1, f'Reading suppressions from \'{args.suppressions}\'')
-      try:
-         regexps, tail_comments = read_suppressions_file(args.suppressions)
-      except ValueError as v:
-         print(str(v))
-         sys.exit(1)
+      regexps, tail_comments, errors = read_suppressions_file(args.suppressions)
+      if errors:
+         print(f'Compilation errors in {errors} suppressions')
+         if not args.keep_going_with_compile_errors:
+            sys.exit(1)
       output(3, f'Suppression regexps: {regexps}')
    else:
       notfoundmsg = f'Suppressions-file \'{args.suppressions}\' not found'

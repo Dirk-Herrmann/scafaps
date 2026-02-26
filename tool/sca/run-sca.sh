@@ -20,7 +20,10 @@ find "${rootdir}" \
    scafapsfile="${scriptdir}/.scafaps/${scriptname}.shellcheck.suppress"
    shellcheck -o all "${scriptfullname}" \
       | # add --verbose option to see also the matching line pairs:
-        ${scafaps} --verbose --suppressions-file-not-found=empty "${scafapsfile}" \
+        ${scafaps} --verbose \
+                   --suppressions-file-not-found=empty \
+                   --keep-going-with-compile-errors \
+                   "${scafapsfile}" \
       | # of the matching line pairs, keep the input lines, drop the regexps
         grep -v '^[~]' \
       | # filter the mismatches with some context lines before and after
