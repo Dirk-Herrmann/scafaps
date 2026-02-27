@@ -71,6 +71,7 @@ executable scafaps
     build-depends:    base,
                       containers,
                       mtl,
+                      optparse-applicative,
                       regex-base,
                       regex-tdfa
 

@@ -4,9 +4,10 @@
 -- Todo: Data.Vector / Data.Sequence as alternative to []?
 
 import Data.Maybe (fromMaybe)
-import GHC.IO.Handle
-import System.IO
-import Text.Regex.TDFA (makeRegex, makeRegexM, match, Regex)
+import GHC.IO.Handle (hGetContents, Handle)
+import qualified Options.Applicative as Opts
+import System.IO (stdin)
+import qualified Text.Regex.TDFA as Rgx
 
 readRawLines :: Handle -> IO [String]
 readRawLines handle = do
@@ -32,7 +33,7 @@ data CompiledRegexp = CompiledRegexp {
     sourceLineNr :: Integer,
     source       :: String,
     valid        :: Bool,
-    compiled     :: Regex,
+    compiled     :: Rgx.Regex,
     comments     :: [NumberedLine]
   } -- deriving (Show)
 
@@ -42,13 +43,13 @@ data CompiledRegexp = CompiledRegexp {
 -- Note that we can use makeRegex instead of makeRegexM here: we truly want
 -- the regex to compile successfully, if not, error is OK since we have to fix
 -- the code.
-neverMatches :: Regex
-neverMatches = makeRegex "$a" :: Regex
+neverMatches :: Rgx.Regex
+neverMatches = Rgx.makeRegex "$a" :: Rgx.Regex
 
 -- The regex compiler does not accept an empty string.  In our case, the empty
 -- string is for an empty line.
-matchesEmptyLine :: Regex
-matchesEmptyLine = makeRegex "^$" :: Regex
+matchesEmptyLine :: Rgx.Regex
+matchesEmptyLine = Rgx.makeRegex "^$" :: Rgx.Regex
 
 -- For a line that is expected to contain a valid regexp, we create the
 -- CompiledRegexp structure.  As input we have the line number, the raw line
@@ -61,7 +62,7 @@ getCompiledRegexp nr str commnts =
   -- case of succcess, the regex has to be extracted from the Maybe.
   let regexM = if null str  -- compiler does not accept empty lines
         then Just matchesEmptyLine
-        else makeRegexM str :: Maybe Regex
+        else Rgx.makeRegexM str :: Maybe Rgx.Regex
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str,
@@ -83,7 +84,8 @@ getCompiledRegexpsHelper ::
 getCompiledRegexpsHelper [] regexes commnts
   = (reverse regexes, reverse commnts)
 -- Found a comment line, put it to our collection and move on
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts | isComment rawLine
+getCompiledRegexpsHelper
+    ((rawLineNr,rawLine):xs) regexes commnts | isComment rawLine
   = let newComment = NumberedLine { lineNr = rawLineNr, content = rawLine }
     in getCompiledRegexpsHelper xs regexes $ newComment:commnts
 -- Found a regexp line, create a CompiledRegex that also contains all the
@@ -107,8 +109,61 @@ getCompiledRegexps rawLines =
 -- -- Checks if the rx matches the beginning(!) of the string
 -- match rx "zyxwvutsrqponml" :: Bool
 
+data Options = Options {
+    optFileName :: String,
+    optWhatIfFileNotFound :: String,
+    optKeepGoingWithCompileError :: Bool,
+    optErrorOnUnsuppressedInput :: Bool,
+    optErrorOnUnusedSuppressions :: Bool,
+    optVerbosity :: Int,
+    optVersion :: Bool
+  } deriving (Show)
+
+optionsParserSetup :: Opts.Parser Options
+optionsParserSetup =
+  Options
+  <$> Opts.argument Opts.str (
+    Opts.metavar "suppressions-file"
+    <> Opts.help "file with suppressions to be applied" )
+  <*> Opts.strOption (
+    Opts.long "suppressions-file-not-found"
+    <> Opts.metavar "{error,empty,pass}"
+    <> Opts.value "error"
+    <> Opts.help "how to proceed if the suppressions-file does not exist.  \
+                 \If \"error\" is selected (the default), scafaps will exit \
+                 \with an error code.  With \"empty\", scafaps will behave \
+                 \as if an empty suppressions-file was given.  With \"pass\",\
+                 \stdin will be copied directly to stdout as if scafaps was \
+                 \not there." )
+  <*> Opts.switch (
+    Opts.long "keep-going-with-compile-errors"
+    <> Opts.help "keep going even if there are errors when compiling \
+                 \suppressions" )
+  <*> Opts.switch (
+    Opts.long "error"
+    <> Opts.short 'e'
+    <> Opts.help "exit with error if unsuppressed output remains" )
+  <*> Opts.switch (
+    Opts.long "error-unused"
+    <> Opts.short 'u'
+    <> Opts.help "exit with error if there are unused suppressions" )
+  <*> (length <$> Opts.many (Opts.flag' () (
+    Opts.long "verbose"
+    <> Opts.short 'v'
+    <> Opts.help "increase verbosity level.  The option can be given several \
+                 \times" )))
+  <*> Opts.switch (
+    Opts.long "version" )
+
+optionsParser :: Opts.ParserInfo Options
+optionsParser = Opts.info (optionsParserSetup Opts.<**> Opts.helper)
+  ( Opts.fullDesc
+  <> Opts.header "scafaps - a tool to suppress from static code analysis" )
+
 main :: IO ()
 main = do
+  options <- Opts.execParser optionsParser
+  print options
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
       toCompiledRegexpStr rx =
