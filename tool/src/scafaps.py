@@ -241,7 +241,7 @@ def parse_arguments():
    parser.add_argument(
       '--error', '-e', action='store_true',
       help=
-         'exit with error if unsuppressed output remains' )
+         'exit with error if unsuppressed input remains' )
    parser.add_argument(
       '--error-unused', '-u', action='store_true',
       help=
