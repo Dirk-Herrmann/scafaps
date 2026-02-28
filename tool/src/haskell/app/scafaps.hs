@@ -15,18 +15,21 @@ import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
--- Verbosity levels:
--- 0: normal program output
--- 1: support user (io, also show matches)
--- 2: support user (explain matching results)
--- 3: support user (debugging user input)
--- 4: dev debug (show internal results)
--- 5: dev debug (show verbosity levels)
 maxVerbosity = 5
+explainVerbosity :: Int -> IO ()
+explainVerbosity 0 = return () -- Verbosity level 0: normal program output
+explainVerbosity 1 = putStrLn "Verbosity level 1: user support (io, also show matches)"
+explainVerbosity 2 = putStrLn "Verbosity level 2: user support (explain matching results)"
+explainVerbosity 3 = putStrLn "Verbosity level 3: user support (debugging user input)"
+explainVerbosity 4 = putStrLn "Verbosity level 4: dev debug (show internal results)"
+explainVerbosity 5 = putStrLn "Verbosity level 5: dev debug (show verbosity levels)"
+explainVerbosity v = putStrLn (
+  "Verbosity level " ++ show v ++ ": \
+  \no such level, set to " ++ show maxVerbosity ++ " (max)" )
 
--- problem: Text shall only once go through the verbosity check.  Otherwise,
--- the level may get added twice.
-
+-- Text shall only once go through the verbosity check.  Otherwise, the level
+-- may get added twice.  Thus, text that has already gone through the check
+-- gets type OutputLine.  OutputLine is intentionally not deriving Show!
 newtype OutputLine = OutputLine {
     outString :: String
   }
@@ -45,13 +48,6 @@ mkOutput verbosity level a
     Just $ OutputLine $ show a
   | otherwise =
     Nothing
-
--- output :: String -> IO ()
--- output s = print s
--- 
--- output :: Maybe String -> IO ()
--- output Nothing = return
--- output Just s = output s
 
 readRawLines :: Handle -> IO [String]
 readRawLines handle = do
@@ -230,6 +226,7 @@ main = do
   -- read options
   options <- Opts.execParser cmdLineOptionsGrammar
   let verbosity = optVerbosity options
+  explainVerbosity verbosity
   output $ mkOutput verbosity 3 options
 
   rawLines <- readRawLines stdin
