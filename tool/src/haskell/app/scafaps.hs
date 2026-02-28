@@ -1,13 +1,25 @@
 -- Copyright (C) 2026 Dirk Herrmann
 
--- Todo: Use Data.Text as alternative to String?
--- Todo: Data.Vector / Data.Sequence as alternative to []?
+-- TODO: Use Data.Text as alternative to String?
+-- probably unnecessary, string is already unicode.
+-- Sample Unicode string: AöЖ€𝄞
+
+-- TODO: Data.Vector / Data.Sequence as alternative to []?
 
 import Data.Maybe (fromMaybe)
 import GHC.IO.Handle (hGetContents, Handle)
 import qualified Options.Applicative as Opts
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
+
+-- 
+-- 
+-- output :: String -> IO ()
+-- output s = print s
+-- 
+-- output :: Maybe String -> IO ()
+-- output Nothing = return
+-- output Just s = output s
 
 readRawLines :: Handle -> IO [String]
 readRawLines handle = do
@@ -108,6 +120,12 @@ getCompiledRegexps rawLines =
 -- FIXME: For Later:
 -- -- Checks if the rx matches the beginning(!) of the string
 -- match rx "zyxwvutsrqponml" :: Bool
+-- -- Show the start and length of match.  TDFA matches are POSIX matches and
+-- -- POSIX requires to delivery the longest match.  Thus, to check for a full
+-- -- match, it is sufficient to check if MatchLength equals the length of the
+-- -- string.
+-- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
+
 data OnFileNotFound =
   FnfError | FnfEmpty | FnfPass
   deriving (Show)
@@ -124,8 +142,7 @@ data Options = Options {
     optKeepGoingWithCompileError :: Bool,
     optErrorOnUnsuppressedInput :: Bool,
     optErrorOnUnusedSuppressions :: Bool,
-    optVerbosity :: Int,
-    optVersion :: Bool
+    optVerbosity :: Int
   } deriving (Show)
 
 optionsParserSetup :: Opts.Parser Options
@@ -162,13 +179,15 @@ optionsParserSetup =
     <> Opts.short 'v'
     <> Opts.help "increase verbosity level.  The option can be given several \
                  \times" )))
-  <*> Opts.switch (
-    Opts.long "version" )
 
 optionsParser :: Opts.ParserInfo Options
-optionsParser = Opts.info (optionsParserSetup Opts.<**> Opts.helper)
-  ( Opts.fullDesc
-  <> Opts.header "scafaps - a tool to suppress from static code analysis" )
+optionsParser =
+  Opts.info
+    ( optionsParserSetup
+      Opts.<**> Opts.simpleVersioner "TODO: Show Version"
+      Opts.<**> Opts.helper )
+    ( Opts.fullDesc
+    <> Opts.header "scafaps - a tool to suppress from static code analysis" )
 
 main :: IO ()
 main = do
