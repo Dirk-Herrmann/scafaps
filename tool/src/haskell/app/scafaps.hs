@@ -6,6 +6,7 @@
 
 -- TODO: Data.Vector / Data.Sequence as alternative to []?
 
+import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion)
 import GHC.IO.Handle (hGetContents, Handle)
@@ -14,6 +15,9 @@ import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
+output :: Show a => Int -> Int -> a -> IO ()
+output verbosity level a =
+  when (verbosity >= level) $ print a
 -- 
 -- 
 -- output :: String -> IO ()
@@ -198,7 +202,8 @@ cmdLineOptionsGrammar =
 main :: IO ()
 main = do
   options <- Opts.execParser cmdLineOptionsGrammar
-  print options
+  let verbosity = optVerbosity options
+  output verbosity 3 options
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
       toCompiledRegexpStr rx =
