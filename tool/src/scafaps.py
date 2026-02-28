@@ -19,7 +19,7 @@ verbosity = 0 # will be set by parse_arguments
 def maybe_get_output(level, message):
    global verbosity
    if verbosity >= 5:
-      return [f'Verbosity({level}): {message}']
+      return [f'Verbosity {level}: {message}']
    elif level <= verbosity:
       return [message]
    else:
