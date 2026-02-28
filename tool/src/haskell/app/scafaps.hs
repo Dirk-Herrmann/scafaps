@@ -108,10 +108,19 @@ getCompiledRegexps rawLines =
 -- FIXME: For Later:
 -- -- Checks if the rx matches the beginning(!) of the string
 -- match rx "zyxwvutsrqponml" :: Bool
+data OnFileNotFound =
+  FnfError | FnfEmpty | FnfPass
+  deriving (Show)
+
+toOnFileNotFound :: String -> Maybe OnFileNotFound
+toOnFileNotFound "error" = Just FnfError
+toOnFileNotFound "empty" = Just FnfEmpty
+toOnFileNotFound "pass"  = Just FnfPass
+toOnFileNotFound _       = Nothing
 
 data Options = Options {
     optFileName :: String,
-    optWhatIfFileNotFound :: String,
+    optWhatIfFileNotFound :: OnFileNotFound,
     optKeepGoingWithCompileError :: Bool,
     optErrorOnUnsuppressedInput :: Bool,
     optErrorOnUnusedSuppressions :: Bool,
@@ -122,13 +131,13 @@ data Options = Options {
 optionsParserSetup :: Opts.Parser Options
 optionsParserSetup =
   Options
-  <$> Opts.argument Opts.str (
+  <$> Opts.strArgument (
     Opts.metavar "suppressions-file"
     <> Opts.help "file with suppressions to be applied" )
-  <*> Opts.strOption (
+  <*> Opts.option (Opts.maybeReader toOnFileNotFound) (
     Opts.long "suppressions-file-not-found"
     <> Opts.metavar "{error,empty,pass}"
-    <> Opts.value "error"
+    <> Opts.value FnfError
     <> Opts.help "how to proceed if the suppressions-file does not exist.  \
                  \If \"error\" is selected (the default), scafaps will exit \
                  \with an error code.  With \"empty\", scafaps will behave \
