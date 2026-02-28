@@ -146,6 +146,7 @@ optionsParserSetup =
                  \not there." )
   <*> Opts.switch (
     Opts.long "keep-going-with-compile-errors"
+    <> Opts.short 'k'
     <> Opts.help "keep going even if there are errors when compiling \
                  \suppressions" )
   <*> Opts.switch (
