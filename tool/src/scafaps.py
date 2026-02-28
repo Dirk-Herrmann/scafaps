@@ -235,7 +235,7 @@ def parse_arguments():
          'was given.  With "pass", stdin will be copied directly to stdout as '
          'if scafaps was not there.')
    parser.add_argument(
-      '--keep-going-with-compile-errors', action='store_true',
+      '--keep-going-with-compile-errors', '-k', action='store_true',
       help=
          'keep going even if there are errors when compiling suppressions' )
    parser.add_argument(
