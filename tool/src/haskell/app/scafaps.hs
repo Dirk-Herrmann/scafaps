@@ -7,8 +7,10 @@
 -- TODO: Data.Vector / Data.Sequence as alternative to []?
 
 import Data.Maybe (fromMaybe)
+import Data.Version (showVersion)
 import GHC.IO.Handle (hGetContents, Handle)
 import qualified Options.Applicative as Opts
+import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
@@ -126,6 +128,10 @@ getCompiledRegexps rawLines =
 -- -- string.
 -- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
 
+getVersion :: String
+getVersion =
+  "scafaps " ++ showVersion version
+
 data OnFileNotFound =
   FnfError | FnfEmpty | FnfPass
   deriving (Show)
@@ -145,8 +151,8 @@ data Options = Options {
     optVerbosity :: Int
   } deriving (Show)
 
-optionsParserSetup :: Opts.Parser Options
-optionsParserSetup =
+cmdLineOptionsGrammarPart :: Opts.Parser Options
+cmdLineOptionsGrammarPart =
   Options
   <$> Opts.strArgument (
     Opts.metavar "suppressions-file"
@@ -180,18 +186,18 @@ optionsParserSetup =
     <> Opts.help "increase verbosity level.  The option can be given several \
                  \times" )))
 
-optionsParser :: Opts.ParserInfo Options
-optionsParser =
+cmdLineOptionsGrammar :: Opts.ParserInfo Options
+cmdLineOptionsGrammar =
   Opts.info
-    ( optionsParserSetup
-      Opts.<**> Opts.simpleVersioner "TODO: Show Version"
+    ( cmdLineOptionsGrammarPart
+      Opts.<**> Opts.simpleVersioner getVersion
       Opts.<**> Opts.helper )
     ( Opts.fullDesc
     <> Opts.header "scafaps - a tool to suppress from static code analysis" )
 
 main :: IO ()
 main = do
-  options <- Opts.execParser optionsParser
+  options <- Opts.execParser cmdLineOptionsGrammar
   print options
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
