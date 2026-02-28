@@ -15,11 +15,37 @@ import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
-output :: Show a => Int -> Int -> a -> IO ()
-output verbosity level a =
-  when (verbosity >= level) $ print a
--- 
--- 
+-- Verbosity levels:
+-- 0: normal program output
+-- 1: support user (io, also show matches)
+-- 2: support user (explain matching results)
+-- 3: support user (debugging user input)
+-- 4: dev debug (show internal results)
+-- 5: dev debug (show verbosity levels)
+maxVerbosity = 5
+
+-- problem: Text shall only once go through the verbosity check.  Otherwise,
+-- the level may get added twice.
+
+newtype OutputLine = OutputLine {
+    outString :: String
+  }
+
+output :: Maybe OutputLine -> IO ()
+output (Just (OutputLine s)) =
+  putStrLn s
+outpout Nothing =
+  return ()
+
+mkOutput :: Show a => Int -> Int -> a -> Maybe OutputLine
+mkOutput verbosity level a
+  | verbosity >= maxVerbosity =
+    Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ show a
+  | verbosity >= level =
+    Just $ OutputLine $ show a
+  | otherwise =
+    Nothing
+
 -- output :: String -> IO ()
 -- output s = print s
 -- 
@@ -201,9 +227,11 @@ cmdLineOptionsGrammar =
 
 main :: IO ()
 main = do
+  -- read options
   options <- Opts.execParser cmdLineOptionsGrammar
   let verbosity = optVerbosity options
-  output verbosity 3 options
+  output $ mkOutput verbosity 3 options
+
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
       toCompiledRegexpStr rx =
