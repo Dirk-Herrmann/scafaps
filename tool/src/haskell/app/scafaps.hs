@@ -50,12 +50,12 @@ output (Just (OutputLine s)) =
 output Nothing =
   return ()
 
-mkOutput :: Show a => Int -> Int -> a -> Maybe OutputLine
-mkOutput verbosity level a
+mkOutput :: Int -> Int -> String -> Maybe OutputLine
+mkOutput verbosity level string
   | verbosity >= maxVerbosity =
-    Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ show a
+    Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ string
   | verbosity >= level =
-    Just $ OutputLine $ show a
+    Just $ OutputLine string
   | otherwise =
     Nothing
 
@@ -259,7 +259,7 @@ main = do
   -- handling verbosity
   let verbosity = optVerbosity options
   explainVerbosity verbosity
-  output $ mkOutput verbosity 3 options
+  output $ mkOutput verbosity 3 $ show options
 
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
