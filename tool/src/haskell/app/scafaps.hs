@@ -21,17 +21,17 @@ maxVerbosity = 5
 explainVerbosity :: Int -> IO ()
 explainVerbosity v =
   let prefix = "Verbosity level " ++ show v ++ ": "
-      putPfxLn :: String -> IO ()
-      putPfxLn s = putStrLn $ prefix ++ s
+      pubVerbInfoLn :: String -> IO ()
+      pubVerbInfoLn s = putStrLn $ prefix ++ s
       maxv   = show maxVerbosity
   in case v of
     0 -> return () -- Verbosity level 0: normal program output
-    1 -> putPfxLn "user support (io, also show matches)"
-    2 -> putPfxLn "user support (explain matching results)"
-    3 -> putPfxLn "user support (debugging user input)"
-    4 -> putPfxLn "dev debug (show internal results)"
-    5 -> putPfxLn "dev debug (show verbosity levels)"
-    _ -> putPfxLn "no such level, using " ++ maxv ++ " (max)"
+    1 -> pubVerbInfoLn "user support (io, also show matches)"
+    2 -> pubVerbInfoLn "user support (explain matching results)"
+    3 -> pubVerbInfoLn "user support (debugging user input)"
+    4 -> pubVerbInfoLn "dev debug (show internal results)"
+    5 -> pubVerbInfoLn "dev debug (show verbosity levels)"
+    _ -> pubVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
 
 -- Text shall only once go through the verbosity check.  Otherwise, the level
 -- may get added twice.  Thus, text that has already gone through the check
