@@ -1,0 +1,37 @@
+Haskell
+- https://www.haskell.org
+- https://hackage-content.haskell.org/package/CheatSheet-1.11/src/CheatSheet.pdf
+- https://en.wikibooks.org/wiki/Haskell
+- https://en.wikibooks.org/wiki/Haskell/Control_structures
+
+GHC / Glasgow Haskell Compiler - main installer
+- GHCup - GHC updater
+  - https://www.haskell.org/ghcup
+
+Emacs for Haskell:
+- eglot ("Emacs Polyglot", "Emacs client for the Language Server Protocol (LSP))
+  -https://www.gnu.org/software/emacs/manual/html_mono/eglot.html
+
+Commandline parser
+- packages:
+  - optparse-applicative
+    - import Options.Applicative
+- overview of package hierarchy / some readme also further down
+  - https://hackage.haskell.org/package/optparse-applicative
+- for builders and readers:
+  https://hackage.haskell.org/package/optparse-applicative-0.19.0.0/docs/Options-Applicative-Builder.html
+- for --help and --version see Options.Applicative.Extra:
+  - https://hackage-content.haskell.org/package/optparse-applicative-0.19.0.0/docs/Options-Applicative-Extra.html
+
+Regular expressions:
+- introductions etc.:
+  - overview of available engines: https://wiki.haskell.org/Regular_expressions
+  - https://gabebw.com/blog/2015/10/11/regular-expressions-in-haskell
+- packages:
+  - regex-base
+  - regex-tdfa
+    - import Text.Regex.TDFA
+- new API, makeRegexM etc:
+  - https://hackage-content.haskell.org/package/regex-base-0.94.0.3/docs/Text-Regex-Base-RegexLike.html
+- most promising backend (POSIX matching, performance):
+  - https://hackage-content.haskell.org/package/regex-tdfa-1.3.2.5/docs/Text-Regex-TDFA.html
