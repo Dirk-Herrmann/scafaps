@@ -13,8 +13,8 @@ import GHC.IO.Handle (hGetContents, Handle)
 import qualified Options.Applicative as Opts
 import Paths_scafaps (version)
 import System.Directory (doesFileExist)
-import System.Exit (exitWith, ExitCode(..))
-import System.IO (stdin)
+import System.Exit (exitSuccess, exitWith, ExitCode(ExitFailure))
+import System.IO (openFile, stdin, IOMode(..))
 import qualified Text.Regex.TDFA as Rgx
 
 ------------------------------------------------------------------------------
@@ -261,26 +261,42 @@ main = do
   -- handling verbosity
   let verbosity = optVerbosity options
   explainVerbosity verbosity
-  let mkOut0 = mkOutput verbosity 0
-  let mkOut1 = mkOutput verbosity 1
-  let mkOut3 = mkOutput verbosity 3
-  output $ mkOut3 $ show options
+  let out0 s = output $ mkOutput verbosity 0 s
+  let out1 s = output $ mkOutput verbosity 1 s
+  output $ mkOutput verbosity 3 $ show options
 
   -- read suppressions
   let supprFileName = optFileName options
   supprFileExists <- doesFileExist supprFileName
   let onFileNotFound = optWhatIfFileNotFound options
   let fnfMsg = "Suppressions-file '" ++ supprFileName ++ "' not found"
-  let msg = case (supprFileExists, onFileNotFound) of
-        (True, _) -> mkOut1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
-        (False, FnfError) -> mkOut0 $ "Error: " ++ fnfMsg
-        (False, FnfEmpty) -> mkOut1 $ fnfMsg ++ ", treating it as an empty file"
-        (False, FnfPass) -> mkOut1 $ fnfMsg ++ ", passing input data through"
-  output msg
+  (compiledRegexps, commnts) <-
+    case (supprFileExists, onFileNotFound) of
+      (True, _) -> do
+        out1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
+        -- intentionally not using withFile below: it closes the file _before_
+        -- subsequent lazy operations access the file contents.
+        supprFileHandle <- openFile supprFileName ReadMode
+        rawLines <- readRawLines supprFileHandle
+        let (compiledRegexps, commnts) = getCompiledRegexps rawLines
+        -- TODO: Show individual lines with errors.  -> helper function
+        let errors = length $ filter (not . valid) compiledRegexps
+        out0 $ "Compilation errors in " ++ show errors ++ " suppressions"
+        return $ getCompiledRegexps rawLines
+      (False, FnfError) -> do
+        out0 $ "Error: " ++ fnfMsg
+        exitWith $ ExitFailure 1
+      (False, FnfEmpty) -> do
+        out1 $ fnfMsg ++ ", treating it as an empty file"
+        return ([], [])
+      (False, FnfPass) -> do
+        out1 $ fnfMsg ++ ", passing input data through"
+        -- TODO: copy input to output - beware that as of today input is just
+        -- stdin.  When allowing to give a file name, the pass-through option
+        -- does not make much sense.
+        exitSuccess
 
-  rawLines <- readRawLines stdin
-  let (compiledRegexps, commnts) = getCompiledRegexps rawLines
-      toCompiledRegexpStr rx =
+  let toCompiledRegexpStr rx =
         let flag = if valid rx then " " else "*"
         in show (sourceLineNr rx) ++ ":" ++ flag ++ (source rx) 
   mapM_ ( putStrLn . toCompiledRegexpStr ) compiledRegexps
@@ -288,5 +304,4 @@ main = do
   -- read input lines subject to suppression
   output $ mkOutput verbosity 1 "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
-  exitWith $ ExitFailure 1
   return ()
