@@ -15,6 +15,10 @@ import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
+------------------------------------------------------------------------------
+-- Verbosity controlled output functions and constants
+------------------------------------------------------------------------------
+
 maxVerbosity :: Int
 maxVerbosity = 5
 
@@ -23,7 +27,7 @@ explainVerbosity v =
   let prefix = "Verbosity level " ++ show v ++ ": "
       pubVerbInfoLn :: String -> IO ()
       pubVerbInfoLn s = putStrLn $ prefix ++ s
-      maxv   = show maxVerbosity
+      maxv = show maxVerbosity
   in case v of
     0 -> return () -- Verbosity level 0: normal program output
     1 -> pubVerbInfoLn "user support (io, also show matches)"
@@ -55,6 +59,11 @@ mkOutput verbosity level a
   | otherwise =
     Nothing
 
+------------------------------------------------------------------------------
+-- Common input functions and types, and functions for reading input lines
+-- subject to suppression
+------------------------------------------------------------------------------
+
 readRawLines :: Handle -> IO [String]
 readRawLines handle = do
   wholeFile <- hGetContents handle
@@ -74,6 +83,10 @@ getNumberedLines rawLines =
       toLine (number, rawLine) =
         NumberedLine { lineNr = number, content = rawLine }
   in map toLine numberedLines
+
+------------------------------------------------------------------------------
+-- Input functions and type for reading suppressions
+------------------------------------------------------------------------------
 
 data CompiledRegexp = CompiledRegexp {
     sourceLineNr :: Integer,
@@ -151,7 +164,10 @@ getCompiledRegexps rawLines =
   let enumeratedLines = enumerateRawLines rawLines
   in getCompiledRegexpsHelper enumeratedLines [] []
 
+------------------------------------------------------------------------------
 -- FIXME: For Later:
+------------------------------------------------------------------------------
+
 -- -- Checks if the rx matches the beginning(!) of the string
 -- match rx "zyxwvutsrqponml" :: Bool
 -- -- Show the start and length of match.  TDFA matches are POSIX matches and
@@ -159,6 +175,10 @@ getCompiledRegexps rawLines =
 -- -- match, it is sufficient to check if MatchLength equals the length of the
 -- -- string.
 -- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
+
+------------------------------------------------------------------------------
+-- Functions and types for command line parsing
+------------------------------------------------------------------------------
 
 getVersion :: String
 getVersion =
