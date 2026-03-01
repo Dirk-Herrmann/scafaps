@@ -8,18 +8,22 @@ import pathlib
 import re
 import sys
 
-# Verbosity levels:
-# 0: normal program output
-# 1: support user (io, also show matches)
-# 2: support user (explain matching results)
-# 3: support user (debugging user input)
-# 4: dev debug (show internal results)
-# 5: dev debug (show verbosity levels)
+MAX_VERBOSITY = 5
+def explain_verbosity(v):
+   prefix = f'Verbosity level {v}: '
+   if   v == 0: pass     # 0: normal program output
+   elif v == 1: print(f'{prefix}user support (io, also show matches)')
+   elif v == 2: print(f'{prefix}user support (explain matching results)')
+   elif v == 3: print(f'{prefix}user support (debugging user input)')
+   elif v == 4: print(f'{prefix}dev debug (show internal results)')
+   elif v == 5: print(f'{prefix}dev debug (show verbosity levels)')
+   else:        print(f'{prefix}no such level, set to {MAX_VERBOSITY} (max)')
+
 verbosity = 0 # will be set by parse_arguments
 def maybe_get_output(level, message):
    global verbosity
    if verbosity >= 5:
-      return [f'Verbosity({level}): {message}']
+      return [f'Verbosity {level}: {message}']
    elif level <= verbosity:
       return [message]
    else:
@@ -257,6 +261,7 @@ def parse_arguments():
 
    global verbosity
    verbosity = args.verbose
+   explain_verbosity(verbosity)
 
    return args
 
