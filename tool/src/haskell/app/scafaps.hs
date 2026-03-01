@@ -247,10 +247,16 @@ cmdLineOptionsGrammar =
     ( Opts.fullDesc
     <> Opts.header "scafaps - a tool to suppress from static code analysis" )
 
+------------------------------------------------------------------------------
+-- main
+------------------------------------------------------------------------------
+
 main :: IO ()
 main = do
   -- read options
   options <- Opts.execParser cmdLineOptionsGrammar
+
+  -- handling verbosity
   let verbosity = optVerbosity options
   explainVerbosity verbosity
   output $ mkOutput verbosity 3 options
