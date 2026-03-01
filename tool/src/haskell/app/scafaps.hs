@@ -15,17 +15,21 @@ import Paths_scafaps (version)
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
+maxVerbosity :: Int
 maxVerbosity = 5
+
 explainVerbosity :: Int -> IO ()
-explainVerbosity 0 = return () -- Verbosity level 0: normal program output
-explainVerbosity 1 = putStrLn "Verbosity level 1: user support (io, also show matches)"
-explainVerbosity 2 = putStrLn "Verbosity level 2: user support (explain matching results)"
-explainVerbosity 3 = putStrLn "Verbosity level 3: user support (debugging user input)"
-explainVerbosity 4 = putStrLn "Verbosity level 4: dev debug (show internal results)"
-explainVerbosity 5 = putStrLn "Verbosity level 5: dev debug (show verbosity levels)"
-explainVerbosity v = putStrLn (
-  "Verbosity level " ++ show v ++ ": \
-  \no such level, set to " ++ show maxVerbosity ++ " (max)" )
+explainVerbosity v =
+  let prefix = "Verbosity level " ++ show v ++ ": "
+      maxv   = show maxVerbosity
+  in case v of
+    0 -> return () -- Verbosity level 0: normal program output
+    1 -> putStrLn $ prefix ++ "user support (io, also show matches)"
+    2 -> putStrLn $ prefix ++ "user support (explain matching results)"
+    3 -> putStrLn $ prefix ++ "user support (debugging user input)"
+    4 -> putStrLn $ prefix ++ "dev debug (show internal results)"
+    5 -> putStrLn $ prefix ++ "dev debug (show verbosity levels)"
+    _ -> putStrLn $ prefix ++ "no such level, using " ++ maxv ++ " (max)"
 
 -- Text shall only once go through the verbosity check.  Otherwise, the level
 -- may get added twice.  Thus, text that has already gone through the check
@@ -37,7 +41,7 @@ newtype OutputLine = OutputLine {
 output :: Maybe OutputLine -> IO ()
 output (Just (OutputLine s)) =
   putStrLn s
-outpout Nothing =
+output Nothing =
   return ()
 
 mkOutput :: Show a => Int -> Int -> a -> Maybe OutputLine
