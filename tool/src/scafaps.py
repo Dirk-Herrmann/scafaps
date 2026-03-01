@@ -17,7 +17,7 @@ def explain_verbosity(v):
    elif v == 3: print(f'{prefix}user support (debugging user input)')
    elif v == 4: print(f'{prefix}dev debug (show internal results)')
    elif v == 5: print(f'{prefix}dev debug (show verbosity levels)')
-   else:        print(f'{prefix}no such level, set to {MAX_VERBOSITY} (max)')
+   else:        print(f'{prefix}no such level, using {MAX_VERBOSITY} (max)')
 
 verbosity = 0 # will be set by parse_arguments
 def maybe_get_output(level, message):
