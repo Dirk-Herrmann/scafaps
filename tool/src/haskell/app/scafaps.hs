@@ -12,6 +12,8 @@ import Data.Version (showVersion)
 import GHC.IO.Handle (hGetContents, Handle)
 import qualified Options.Applicative as Opts
 import Paths_scafaps (version)
+import System.Directory (doesFileExist)
+import System.Exit (exitWith, ExitCode(..))
 import System.IO (stdin)
 import qualified Text.Regex.TDFA as Rgx
 
@@ -259,7 +261,22 @@ main = do
   -- handling verbosity
   let verbosity = optVerbosity options
   explainVerbosity verbosity
-  output $ mkOutput verbosity 3 $ show options
+  let mkOut0 = mkOutput verbosity 0
+  let mkOut1 = mkOutput verbosity 1
+  let mkOut3 = mkOutput verbosity 3
+  output $ mkOut3 $ show options
+
+  -- read suppressions
+  let supprFileName = optFileName options
+  supprFileExists <- doesFileExist supprFileName
+  let onFileNotFound = optWhatIfFileNotFound options
+  let fnfMsg = "Suppressions-file '" ++ supprFileName ++ "' not found"
+  let msg = case (supprFileExists, onFileNotFound) of
+        (True, _) -> mkOut1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
+        (False, FnfError) -> mkOut0 $ "Error: " ++ fnfMsg
+        (False, FnfEmpty) -> mkOut1 $ fnfMsg ++ ", treating it as an empty file"
+        (False, FnfPass) -> mkOut1 $ fnfMsg ++ ", passing input data through"
+  output msg
 
   rawLines <- readRawLines stdin
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
@@ -267,3 +284,9 @@ main = do
         let flag = if valid rx then " " else "*"
         in show (sourceLineNr rx) ++ ":" ++ flag ++ (source rx) 
   mapM_ ( putStrLn . toCompiledRegexpStr ) compiledRegexps
+
+  -- read input lines subject to suppression
+  output $ mkOutput verbosity 1 "Reading input lines (SCA output) from stdin"
+  rawLines <- readRawLines stdin
+  exitWith $ ExitFailure 1
+  return ()

@@ -70,6 +70,7 @@ executable scafaps
     -- Other library packages from which modules are imported.
     build-depends:    base,
                       containers,
+                      directory,
                       mtl,
                       optparse-applicative,
                       regex-base,
