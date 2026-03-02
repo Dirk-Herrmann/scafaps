@@ -55,11 +55,11 @@ output Nothing =
 mkOutput :: Int -> Int -> String -> Maybe OutputLine
 mkOutput verbosity level string
   | verbosity >= maxVerbosity =
-    Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ string
+      Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ string
   | verbosity >= level =
-    Just $ OutputLine string
+      Just $ OutputLine string
   | otherwise =
-    Nothing
+      Nothing
 
 ------------------------------------------------------------------------------
 -- Common input functions and types, and functions for reading input lines
@@ -135,26 +135,26 @@ getCompiledRegexp nr str commnts =
   }
 
 isComment :: [Char] -> Bool
-isComment rawLine
-  = not (null rawLine) && (head rawLine == '#')
+isComment rawLine =
+  not (null rawLine) && (head rawLine == '#')
 
 getCompiledRegexpsHelper ::
   [(Integer, String)] -> [CompiledRegexp] -> [NumberedLine]
   -> ([CompiledRegexp], [NumberedLine])
 -- End of list, just return what we have collected
-getCompiledRegexpsHelper [] regexes commnts
-  = (reverse regexes, reverse commnts)
+getCompiledRegexpsHelper [] regexes commnts =
+  (reverse regexes, reverse commnts)
 -- Found a comment line, put it to our collection and move on
-getCompiledRegexpsHelper
-    ((rawLineNr,rawLine):xs) regexes commnts | isComment rawLine
-  = let newComment = NumberedLine { lineNr = rawLineNr, content = rawLine }
-    in getCompiledRegexpsHelper xs regexes $ newComment:commnts
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts
+  | isComment rawLine =
+      let newComment = NumberedLine { lineNr = rawLineNr, content = rawLine }
+      in getCompiledRegexpsHelper xs regexes $ newComment:commnts
 -- Found a regexp line, create a CompiledRegex that also contains all the
 -- comments found so far.  Then, continue but start afresh collecting
 -- comments.
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts
-  = let newRegexp = getCompiledRegexp rawLineNr rawLine (reverse commnts)
-    in getCompiledRegexpsHelper xs (newRegexp:regexes) []
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts =
+  let newRegexp = getCompiledRegexp rawLineNr rawLine (reverse commnts)
+  in getCompiledRegexpsHelper xs (newRegexp:regexes) []
 
 -- The input list of strings is a mixture of comment lines and regexp lines.
 -- The comment lines are interpreted to belong to following regexp line and
