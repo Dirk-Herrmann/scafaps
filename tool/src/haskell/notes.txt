@@ -3,6 +3,8 @@ Haskell
 - https://hackage-content.haskell.org/package/CheatSheet-1.11/src/CheatSheet.pdf
 - https://en.wikibooks.org/wiki/Haskell
 - https://en.wikibooks.org/wiki/Haskell/Control_structures
+- regarding indentation:
+  - https://stackoverflow.com/questions/55278358/does-a-case-expression-in-a-let-expression-require-braces-and-semicolons
 
 GHC / Glasgow Haskell Compiler - main installer
 - GHCup - GHC updater
@@ -13,6 +15,8 @@ Emacs for Haskell:
   -https://www.gnu.org/software/emacs/manual/html_mono/eglot.html
 
 IO operations
+- introductions etc.:
+  - on the use of withFile: https://stackoverflow.com/questions/26949378/what-caused-this-delayed-read-on-closed-handle-error
 - packages:
   - System.Exit from base
     - import System.Exit
