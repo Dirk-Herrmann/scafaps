@@ -90,7 +90,7 @@ getNumberedLines rawLines =
   in map toLine numberedLines
 
 ------------------------------------------------------------------------------
--- Input functions and type for reading suppressions
+-- Input functions and types for reading suppressions
 ------------------------------------------------------------------------------
 
 data CompiledRegexp = CompiledRegexp {
