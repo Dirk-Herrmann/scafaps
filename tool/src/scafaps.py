@@ -8,6 +8,10 @@ import pathlib
 import re
 import sys
 
+##############################################################################
+# Verbosity controlled output functions and constants
+##############################################################################
+
 MAX_VERBOSITY = 5
 def explain_verbosity(v):
    prefix = f'Verbosity level {v}: '
@@ -33,6 +37,14 @@ def output(level, message):
    if (output_list := maybe_get_output(level, message)):
       print(output_list[0])
 
+def eprint(*args, **kwargs):
+   print(*args, file=sys.stderr, **kwargs)
+
+##############################################################################
+# Common input functions and types, and functions for reading input lines
+# subject to suppression
+##############################################################################
+
 def read_raw_lines(input_file):
    # read whole file, drop \n from lines
    return input_file.read().splitlines()
@@ -46,6 +58,10 @@ def read_lines(input_file):
    raw_lines = read_raw_lines(input_file)
    lines = [Line(nr, raw_lines[nr]) for nr in range(len(raw_lines))]
    return lines
+
+##############################################################################
+# Input functions and types for reading suppressions
+##############################################################################
 
 @dataclasses.dataclass
 class Regexp:
@@ -71,8 +87,8 @@ def read_suppressions_file(path):
             regexp = re.compile(raw_line)
          except re.error as e:
             errors += 1
-            print(f'Error compiling suppression in line {nr}: {e.msg}')
-            print(f'  Offending suppression: >>{raw_line}<<')
+            eprint(f'Error compiling suppression in line {nr}: {e.msg}')
+            eprint(f'  Offending suppression: >>{raw_line}<<')
             regexps.append(Regexp(
                nr, raw_line, False, never_matches, comments))
          else:
@@ -222,6 +238,10 @@ def copy_input_to_output(input_file):
       if len(data) == 0:
          return
 
+##############################################################################
+# Functions and types for command line parsing
+##############################################################################
+
 def parse_arguments():
    parser = argparse.ArgumentParser(
       description='Suppress false positives from static code analysis.' )
@@ -265,6 +285,10 @@ def parse_arguments():
 
    return args
 
+##############################################################################
+# main
+##############################################################################
+
 def run_scafaps():
    args = parse_arguments()
    output(3, f'Option settings: {vars(args)}')
@@ -273,14 +297,14 @@ def run_scafaps():
       output(1, f'Reading suppressions from \'{args.suppressions}\'')
       regexps, tail_comments, errors = read_suppressions_file(args.suppressions)
       if errors:
-         print(f'Compilation errors in {errors} suppressions')
+         eprint(f'Compilation errors in {errors} suppressions')
          if not args.keep_going_with_compile_errors:
             sys.exit(1)
       output(3, f'Suppression regexps: {regexps}')
    else:
       notfoundmsg = f'Suppressions-file \'{args.suppressions}\' not found'
       if args.suppressions_file_not_found == 'error':
-         print(f'Error: {notfoundmsg}')
+         eprint(f'Error: {notfoundmsg}')
          sys.exit(1)
       elif args.suppressions_file_not_found == 'empty':
          output(1, f'{notfoundmsg}, treating it as an empty file')
