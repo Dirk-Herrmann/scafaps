@@ -14,7 +14,7 @@ import qualified Options.Applicative as Opts
 import Paths_scafaps (version)
 import System.Directory (doesFileExist)
 import System.Exit (exitSuccess, exitWith, ExitCode(ExitFailure))
-import System.IO (openFile, stdin, IOMode(..))
+import System.IO (hClose, hPutStrLn, openFile, stderr, stdin, IOMode(..))
 import qualified Text.Regex.TDFA as Rgx
 
 ------------------------------------------------------------------------------
@@ -60,6 +60,9 @@ mkOutput verbosity level string
       Just $ OutputLine string
   | otherwise =
       Nothing
+
+errout :: String -> IO ()
+errout s = hPutStrLn stderr s
 
 ------------------------------------------------------------------------------
 -- Common input functions and types, and functions for reading input lines
@@ -166,6 +169,26 @@ getCompiledRegexps rawLines =
   let enumeratedLines = enumerateRawLines rawLines
   in getCompiledRegexpsHelper enumeratedLines [] []
 
+erroutRegexErr :: CompiledRegexp -> IO ()
+erroutRegexErr errorRegexp = do
+  let srcLineNr = sourceLineNr errorRegexp
+  let supprSrc = source errorRegexp
+  errout $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
+  errout $ "  Offending suppression: >>" ++ supprSrc ++ "<<"
+
+readCompiledRegexps :: String -> IO ([CompiledRegexp], [NumberedLine], Int)
+readCompiledRegexps supprFileName = do
+  -- intentionally not using withFile below: it closes the file _before_
+  -- subsequent lazy operations access the file contents.
+  supprFileHandle <- openFile supprFileName ReadMode
+  rawLines <- readRawLines supprFileHandle
+  let (compiledRegexps, commnts) = getCompiledRegexps rawLines
+  let errorRegexps = filter (not . valid) compiledRegexps
+  let errors = length errorRegexps
+  mapM_ erroutRegexErr errorRegexps
+  hClose supprFileHandle
+  return (compiledRegexps, commnts, errors)
+
 ------------------------------------------------------------------------------
 -- FIXME: For Later:
 ------------------------------------------------------------------------------
@@ -263,7 +286,8 @@ main = do
   explainVerbosity verbosity
   let out0 s = output $ mkOutput verbosity 0 s
   let out1 s = output $ mkOutput verbosity 1 s
-  output $ mkOutput verbosity 3 $ show options
+  let out3 s = output $ mkOutput verbosity 3 s
+  out3 $ show options
 
   -- read suppressions
   let supprFileName = optFileName options
@@ -274,17 +298,17 @@ main = do
     case (supprFileExists, onFileNotFound) of
       (True, _) -> do
         out1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
-        -- intentionally not using withFile below: it closes the file _before_
-        -- subsequent lazy operations access the file contents.
-        supprFileHandle <- openFile supprFileName ReadMode
-        rawLines <- readRawLines supprFileHandle
-        let (compiledRegexps, commnts) = getCompiledRegexps rawLines
-        -- TODO: Show individual lines with errors.  -> helper function
-        let errors = length $ filter (not . valid) compiledRegexps
-        out0 $ "Compilation errors in " ++ show errors ++ " suppressions"
-        return $ getCompiledRegexps rawLines
+        (compiledRegexps, commnts, errors) <- readCompiledRegexps supprFileName
+        if errors > 0 then do
+          errout $ "Compilation errors in " ++ show errors ++ " suppressions"
+          if not $ optKeepGoingWithCompileError options then
+            exitWith $ ExitFailure 1
+          else return ()
+        else return ()
+        -- TODO: out3 $ "Suppression regexps: " ++ show compiledRegexps
+        return (compiledRegexps, commnts)
       (False, FnfError) -> do
-        out0 $ "Error: " ++ fnfMsg
+        errout $ "Error: " ++ fnfMsg
         exitWith $ ExitFailure 1
       (False, FnfEmpty) -> do
         out1 $ fnfMsg ++ ", treating it as an empty file"
