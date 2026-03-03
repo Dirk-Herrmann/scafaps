@@ -39,9 +39,10 @@ explainVerbosity v =
     5 -> pubVerbInfoLn "dev debug (show verbosity levels)"
     _ -> pubVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
 
--- Text shall only once go through the verbosity check.  Otherwise, the level
--- may get added twice.  Thus, text that has already gone through the check
--- gets type OutputLine.  OutputLine is intentionally not deriving Show!
+-- Text shall only once go through the verbosity check.  Otherwise, in case of
+-- maxVerbosity, the level may get added twice.  Thus, text that has already
+-- gone through the check gets type OutputLine.  OutputLine is intentionally
+-- not deriving Show!
 newtype OutputLine = OutputLine {
     outString :: String
   }
