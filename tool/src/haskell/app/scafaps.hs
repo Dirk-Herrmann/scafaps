@@ -40,27 +40,23 @@ explainVerbosity v =
     _ -> pubVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
 
 -- Text shall only once go through the verbosity check.  Otherwise, in case of
--- maxVerbosity, the level may get added twice.  Thus, text that has already
--- gone through the check gets type OutputLine.  OutputLine is intentionally
--- not deriving Show!
-newtype OutputLine = OutputLine {
-    outString :: String
-  }
+-- maxVerbosity, the level may get added twice.  Thus, output that is ready
+-- for the check gets type OutputLine.
+data OutputLine =
+  OutputString Int String
 
-output :: Maybe OutputLine -> IO ()
-output (Just (OutputLine s)) =
-  putStrLn s
-output Nothing =
-  return ()
-
-mkOutput :: Int -> Int -> String -> Maybe OutputLine
-mkOutput verbosity level string
+output :: Int -> OutputLine -> IO ()
+output verbosity (OutputString level string)
   | verbosity >= maxVerbosity =
-      Just $ OutputLine $ "Verbosity " ++ show level ++ ": " ++ string
+      putStrLn $ "Verbosity " ++ show level ++ ": " ++ string
   | verbosity >= level =
-      Just $ OutputLine string
+      putStrLn string
   | otherwise =
-      Nothing
+      return ()
+
+mkOutput :: Int -> String -> OutputLine
+mkOutput level string =
+  OutputString level string
 
 errout :: String -> IO ()
 errout s = hPutStrLn stderr s
@@ -285,9 +281,9 @@ main = do
   -- handling verbosity
   let verbosity = optVerbosity options
   explainVerbosity verbosity
-  let out0 s = output $ mkOutput verbosity 0 s
-  let out1 s = output $ mkOutput verbosity 1 s
-  let out3 s = output $ mkOutput verbosity 3 s
+  let out0 s = output verbosity $ mkOutput 0 s
+  let out1 s = output verbosity $ mkOutput 1 s
+  let out3 s = output verbosity $ mkOutput 3 s
   out3 $ show options
 
   -- read suppressions
@@ -325,6 +321,6 @@ main = do
   mapM_ ( putStrLn . toCompiledRegexpStr ) compiledRegexps
 
   -- read input lines subject to suppression
-  output $ mkOutput verbosity 1 "Reading input lines (SCA output) from stdin"
+  out1 "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
   return ()
