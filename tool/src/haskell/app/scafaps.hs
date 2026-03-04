@@ -6,7 +6,7 @@
 
 -- TODO: Data.Vector / Data.Sequence as alternative to []?
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion)
 import GHC.IO.Handle (hGetContents, Handle)
@@ -302,7 +302,7 @@ main = do
         (compiledRegexps, commnts, errors) <- readCompiledRegexps supprFileName
         when (errors > 0) $ do
           errout $ "Compilation errors in " ++ show errors ++ " suppressions"
-          unless optKeepGoingWithCompileError options $ do
+          unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
         -- TODO: out3 $ "Suppression regexps: " ++ show compiledRegexps
         return (compiledRegexps, commnts)
