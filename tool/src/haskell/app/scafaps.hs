@@ -6,6 +6,9 @@
 
 -- TODO: Data.Vector / Data.Sequence as alternative to []?
 
+-- TODO: Output of compiled regexps with out3 is not very user friendly, same
+-- problem with Python code.
+
 import Control.Monad (unless, when)
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion)
@@ -96,7 +99,12 @@ data CompiledRegexp = CompiledRegexp {
     valid        :: Bool,
     compiled     :: Rgx.Regex,
     comments     :: [NumberedLine]
-  } -- deriving (Show)
+  }
+
+instance Show CompiledRegexp where
+  show (CompiledRegexp lnr src val cmpld comm) =
+    "Regexp {lineNr = " ++ show lnr ++ ", content = " ++ show src ++
+      ", valid = " ++ show val ++ ", comments = " ++ show comm ++ "}"
 
 -- Compiled "$a" is used as a regex that never matches.  Was tested against
 -- the following input strings: "" "a" "$a" "$" "\na" "\ra" "\n\ra" "\r\na"
@@ -300,7 +308,7 @@ main = do
           errout $ "Compilation errors in " ++ show errors ++ " suppressions"
           unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
-        -- TODO: out3 $ "Suppression regexps: " ++ show compiledRegexps
+        out3 $ "Suppression regexps: " ++ show compiledRegexps
         return (compiledRegexps, commnts)
       (False, FnfError) -> do
         errout $ "Error: " ++ fnfMsg
