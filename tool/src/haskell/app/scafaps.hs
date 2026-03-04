@@ -300,12 +300,10 @@ main = do
       (True, _) -> do
         out1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
         (compiledRegexps, commnts, errors) <- readCompiledRegexps supprFileName
-        if errors > 0 then do
+        when (errors > 0) $ do
           errout $ "Compilation errors in " ++ show errors ++ " suppressions"
-          if not $ optKeepGoingWithCompileError options then
+          unless optKeepGoingWithCompileError options $ do
             exitWith $ ExitFailure 1
-          else return ()
-        else return ()
         -- TODO: out3 $ "Suppression regexps: " ++ show compiledRegexps
         return (compiledRegexps, commnts)
       (False, FnfError) -> do
