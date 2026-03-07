@@ -17,7 +17,8 @@ import qualified Options.Applicative as Opts
 import Paths_scafaps (version)
 import System.Directory (doesFileExist)
 import System.Exit (exitSuccess, exitWith, ExitCode(ExitFailure))
-import System.IO (hClose, hPutStrLn, openFile, stderr, stdin, IOMode(..))
+import System.IO (
+  hClose, hPutStr, hPutStrLn, openFile, stderr, stdin, stdout, IOMode(..))
 import qualified Text.Regex.TDFA as Rgx
 
 ------------------------------------------------------------------------------
@@ -206,6 +207,11 @@ readCompiledRegexps supprFileName = do
 -- -- string.
 -- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
 
+copyInputToOutput :: Handle -> IO ()
+copyInputToOutput handle = do
+  wholeFile <- hGetContents handle
+  hPutStr stdout wholeFile
+
 ------------------------------------------------------------------------------
 -- Functions and types for command line parsing
 ------------------------------------------------------------------------------
@@ -317,10 +323,13 @@ main = do
         out1 $ fnfMsg ++ ", treating it as an empty file"
         return ([], [])
       (False, FnfPass) -> do
+        -- TODO: Currently, the lines that are subject to suppression can only
+        -- be provided via stdin.  In future the possibility may be added to
+        -- give a file name alternatively to stdin.  Then, for the case that a
+        -- file name is given, it has to be re-considered what the purpose of
+        -- the pass option would be.
         out1 $ fnfMsg ++ ", passing input data through"
-        -- TODO: copy input to output - beware that as of today input is just
-        -- stdin.  When allowing to give a file name, the pass-through option
-        -- does not make much sense.
+        copyInputToOutput stdin
         exitSuccess
 
   let toCompiledRegexpStr rx =
