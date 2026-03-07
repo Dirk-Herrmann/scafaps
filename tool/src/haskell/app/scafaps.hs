@@ -332,12 +332,10 @@ main = do
         copyInputToOutput stdin
         exitSuccess
 
-  let toCompiledRegexpStr rx =
-        let flag = if valid rx then " " else "*"
-        in show (sourceLineNr rx) ++ ":" ++ flag ++ (source rx) 
-  mapM_ ( putStrLn . toCompiledRegexpStr ) compiledRegexps
-
   -- read input lines subject to suppression
   out1 "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
+  let lines = getNumberedLines rawLines
+  out3 $ "Input lines: " ++ show lines
+
   return ()
