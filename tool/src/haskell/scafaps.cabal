@@ -74,7 +74,8 @@ executable scafaps
                       mtl,
                       optparse-applicative,
                       regex-base,
-                      regex-tdfa
+                      regex-tdfa,
+                      vector
 
     -- Directories containing source files.
     hs-source-dirs:   app

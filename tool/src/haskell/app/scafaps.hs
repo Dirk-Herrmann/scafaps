@@ -11,6 +11,7 @@
 
 import Control.Monad (unless, when)
 import Data.Maybe (fromMaybe)
+import Data.Vector ((!), constructN, fromList, Vector)
 import Data.Version (showVersion)
 import GHC.IO.Handle (hGetContents, Handle)
 import qualified Options.Applicative as Opts
@@ -207,6 +208,47 @@ readCompiledRegexps supprFileName = do
 -- -- string.
 -- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
 
+isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
+isFullMatch rx ln =
+  let (o, l) = Rgx.match (compiled rx) (content ln)
+        :: (Rgx.MatchOffset, Rgx.MatchLength)
+  in l == (length $ content ln)
+
+-- Scafaps, similar to diff, computes the longest common subsequence (LCS).
+-- In contrast to diff, we don't compare the lines for equality, but instead
+-- see if the respective line is fully matched by the corresponding regular
+-- expression.  For an explanation of the LCS algorithm, see Wikipedia
+--
+-- Some remarks:
+-- * To simplify the algorithm, the table is extended by a column 0 and a row
+--   0, which are filled with zeroes.  This requires the table to be enlarged,
+--   see the size arguments of the calls to constructN.
+-- * To obtain a two-dimensional vector, two calls to constructN are nested.
+--   A call to constructN represents a loop - the given size argument is the
+--   size of the resulting vector and determines the number of iterations, and
+--   the given function corresponds to the loop body.
+This Haskell algorithm builds the vector using a nested call to constructN: 
+computeLcsTable :: [CompiledRegexp] -> [NumberedLine] -> Vector (Vector Int)
+computeLcsTable regexps lines =
+  let regexpsV = fromList regexps -- regexps as Vector
+      linesV   = fromList lines   -- lines as Vector
+      innerLoopBody :: Vector (Vector Int) -> Vector Int -> Int
+      innerLoopBody lcsTmp rowTmp =
+        let i = length lcsTmp
+            j = length rowTmp
+            rx = regexpsV ! (i - 1) -- lazy, otherwise error with i==0
+            ln = linesV ! (j - 1)   -- lazy, otherwise error with j==0
+            result
+              | i == 0 = 0
+              | j == 0 = 0
+              | isFullMatch rx ln = (lcsTmp ! (i-1) ! (j-1)) + 1
+              | otherwise = max (rowTmp ! (j-1)) (lcsTmp ! (i-1) ! j)
+        in result
+      outerLoopBody :: Vector (Vector Int) -> Vector Int
+      outerLoopBody lcsTmp
+        = constructN (1 + length linesV) $ innerLoopBody lcsTmp
+  in constructN (1 + length regexpsV) outerLoopBody
+
 copyInputToOutput :: Handle -> IO ()
 copyInputToOutput handle = do
   wholeFile <- hGetContents handle
@@ -298,6 +340,7 @@ main = do
   let out0 s = output verbosity $ mkOutput 0 s
   let out1 s = output verbosity $ mkOutput 1 s
   let out3 s = output verbosity $ mkOutput 3 s
+  let out4 s = output verbosity $ mkOutput 4 s
   out3 $ show options
 
   -- read suppressions
@@ -337,5 +380,8 @@ main = do
   rawLines <- readRawLines stdin
   let lines = getNumberedLines rawLines
   out3 $ "Input lines: " ++ show lines
+
+  let lcsTable = computeLcsTable compiledRegexps lines
+  out4 $ "lcsTable = " ++ show lcsTable
 
   return ()
