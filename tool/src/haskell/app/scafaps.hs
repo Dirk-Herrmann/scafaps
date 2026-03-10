@@ -200,19 +200,16 @@ readCompiledRegexps supprFileName = do
 -- FIXME: For Later:
 ------------------------------------------------------------------------------
 
--- -- Checks if the rx matches the beginning(!) of the string
--- match rx "zyxwvutsrqponml" :: Bool
--- -- Show the start and length of match.  TDFA matches are POSIX matches and
--- -- POSIX requires to delivery the longest match.  Thus, to check for a full
--- -- match, it is sufficient to check if MatchLength equals the length of the
--- -- string.
--- match rx "zyxwvutsrqponml" :: (MatchOffset, MatchLength)
 
 isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
 isFullMatch rx ln =
-  let (o, l) = Rgx.match (compiled rx) (content ln)
-        :: (Rgx.MatchOffset, Rgx.MatchLength)
-  in l == (length $ content ln)
+  let (offset, matchLen) =
+        -- Return the start offset and length of the match.  TDFA implements
+        -- POSIX matching which requires to deliver the longest match.  Thus,
+        -- if a full match is possible, MatchLength will equal the length of
+        -- the string.
+        Rgx.match (compiled rx) (content ln) :: (Rgx.MatchOffset, Rgx.MatchLength)
+  in matchLen == (length $ content ln)
 
 -- Scafaps, similar to diff, computes the longest common subsequence (LCS).
 -- In contrast to diff, we don't compare the lines for equality, but instead
@@ -227,7 +224,6 @@ isFullMatch rx ln =
 --   A call to constructN represents a loop - the given size argument is the
 --   size of the resulting vector and determines the number of iterations, and
 --   the given function corresponds to the loop body.
-This Haskell algorithm builds the vector using a nested call to constructN: 
 computeLcsTable :: [CompiledRegexp] -> [NumberedLine] -> Vector (Vector Int)
 computeLcsTable regexps lines =
   let regexpsV = fromList regexps -- regexps as Vector
