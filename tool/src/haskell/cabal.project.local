@@ -1,0 +1,4 @@
+ignore-project: False
+profiling: False
+profiling-detail: all-functions
+optimization: 2
