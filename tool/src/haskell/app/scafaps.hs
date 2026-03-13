@@ -131,9 +131,19 @@ getCompiledRegexp nr str commnts =
   -- to avoid "error" being called for bad regexps use makeRegexM with Maybe:
   -- if the regex can be compiled, we get 'Just Regex', else 'Nothing'.  In
   -- case of succcess, the regex has to be extracted from the Maybe.
-  let regexM = if null str  -- compiler does not accept empty lines
-        then Just matchesEmptyLine
-        else Rgx.makeRegexM str :: Maybe Rgx.Regex
+  let compOpts = Rgx.CompOption {
+        Rgx.caseSensitive  = True,
+        Rgx.multiline      = False,
+        Rgx.rightAssoc     = True,
+        Rgx.newSyntax      = False,
+        Rgx.lastStarGreedy = True }
+      execOpts = Rgx.ExecOption {
+        Rgx.captureGroups  = False }
+      -- to avoid "error" being called for bad regexps use makeRegexOptsM with
+      -- Maybe: if the regex can be compiled, we get 'Just Regex', else
+      -- 'Nothing'.  In case of succcess, the regex has to be extracted from
+      -- the Maybe.
+      regexM = Rgx.makeRegexOptsM compOpts execOpts str :: Maybe Rgx.Regex
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str,
