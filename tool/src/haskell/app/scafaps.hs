@@ -247,9 +247,9 @@ lengthOfInitialMatchingSequence regexps numberedLines =
 --   size of the resulting vector and determines the number of iterations, and
 --   the given function corresponds to the loop body.
 computeLcsTable :: [CompiledRegexp] -> [NumberedLine] -> Vector (Vector Int)
-computeLcsTable regexps lines =
-  let regexpsV = fromList regexps -- regexps as Vector
-      linesV   = fromList lines   -- lines as Vector
+computeLcsTable regexps numberedLines =
+  let regexpsV = fromList regexps        -- regexps as Vector
+      linesV   = fromList numberedLines  -- lines as Vector
       innerLoopBody :: Vector (Vector Int) -> Vector Int -> Int
       innerLoopBody lcsTmp rowTmp =
         let i = length lcsTmp
