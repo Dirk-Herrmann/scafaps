@@ -218,18 +218,17 @@ readCompiledRegexps supprFileName = do
   return (compiledRegexps, commnts, errors)
 
 ------------------------------------------------------------------------------
--- FIXME: For Later:
+-- Functions to compute the longest common subsequence (LCS)
 ------------------------------------------------------------------------------
-
 
 isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
 isFullMatch rx ln =
   Rgx.match (compiled rx) (content ln) :: Bool
 
--- Scafaps, similar to diff, computes the longest common subsequence (LCS).
--- In contrast to diff, we don't compare the lines for equality, but instead
--- see if the respective line is fully matched by the corresponding regular
--- expression.  For an explanation of the LCS algorithm, see Wikipedia
+-- Scafaps, similar to diff, computes the LCS.  In contrast to diff, we don't
+-- compare the lines for equality, but instead see if the respective line is
+-- fully matched by the corresponding regular expression.  For an explanation
+-- of the LCS algorithm, see Wikipedia.
 --
 -- Some remarks:
 -- * To simplify the algorithm, the table is extended by a column 0 and a row
