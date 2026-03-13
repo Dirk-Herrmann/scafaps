@@ -75,6 +75,7 @@ executable scafaps
                       optparse-applicative,
                       regex-base,
                       regex-tdfa,
+                      time,
                       vector
 
     -- Directories containing source files.
