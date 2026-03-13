@@ -104,9 +104,10 @@ data CompiledRegexp = CompiledRegexp {
   }
 
 instance Show CompiledRegexp where
-  show (CompiledRegexp lnr src val cmpld comm) =
-    "Regexp {lineNr = " ++ show lnr ++ ", content = " ++ show src ++
-      ", valid = " ++ show val ++ ", comments = " ++ show comm ++ "}"
+  show (CompiledRegexp lnr src val _cmpld comm) =
+    "Regexp {lineNr = " ++ show lnr ++ ", content = " ++ show src
+    ++ ", valid = " ++ show val ++ ", compiled(\"^" ++ src ++ "$\")"
+    ++ ", comments = " ++ show comm ++ "}"
 
 -- Compiled "$a" is used as a regex that never matches.  Was tested against
 -- the following input strings: "" "a" "$a" "$" "\na" "\ra" "\n\ra" "\r\na"
@@ -117,21 +118,31 @@ instance Show CompiledRegexp where
 neverMatches :: Rgx.Regex
 neverMatches = Rgx.makeRegex "$a" :: Rgx.Regex
 
--- The regex compiler does not accept an empty string.  In our case, the empty
--- string is for an empty line.
-matchesEmptyLine :: Rgx.Regex
-matchesEmptyLine = Rgx.makeRegex "^$" :: Rgx.Regex
-
 -- For a line that is expected to contain a valid regexp, we create the
 -- CompiledRegexp structure.  As input we have the line number, the raw line
 -- that forms the source of regexp compilation and the collected comment lines
 -- that precede the regexp in the suppressions file.
+--
+-- The regexp is considered to match a line if it is a full match, from the
+-- beginning of the line to the end.  This can be achived in several ways.
+-- One option (A) is to enclose the regexp string between "^" and "$".
+-- Another option (B) is to use the match overload that delivers a result of
+-- type (Rgx.MatchOffset, Rgx.MatchLength) and check if Rgx.MatchLength equals
+-- the length of the string to be matched.  This works because TDFA implements
+-- POSIX matching which requires to deliver the longest match.
+--
+-- Option A has some advantages over B: First, it is faster, because a) the
+-- regexp engine handles the anchored regexp better, and b) because we can use
+-- a match overload that only delivers a Bool result, and c) we don't have to
+-- compare the result against the length of the string to be matched.  Second,
+-- the regexp compiler does not accept empty regexps, but an empty string
+-- becomes "^$", which is accepted by the compiler.  The only problem with
+-- option A is, that it will fail if the regexp string argument already
+-- contains one of these anchors.
 getCompiledRegexp :: Integer -> String -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
-  -- to avoid "error" being called for bad regexps use makeRegexM with Maybe:
-  -- if the regex can be compiled, we get 'Just Regex', else 'Nothing'.  In
-  -- case of succcess, the regex has to be extracted from the Maybe.
-  let compOpts = Rgx.CompOption {
+  let srcStr = "^" ++ str ++ "$"
+      compOpts = Rgx.CompOption {
         Rgx.caseSensitive  = True,
         Rgx.multiline      = False,
         Rgx.rightAssoc     = True,
@@ -143,10 +154,10 @@ getCompiledRegexp nr str commnts =
       -- Maybe: if the regex can be compiled, we get 'Just Regex', else
       -- 'Nothing'.  In case of succcess, the regex has to be extracted from
       -- the Maybe.
-      regexM = Rgx.makeRegexOptsM compOpts execOpts str :: Maybe Rgx.Regex
+      regexM = Rgx.makeRegexOptsM compOpts execOpts srcStr :: Maybe Rgx.Regex
   in CompiledRegexp {
     sourceLineNr = nr,
-    source       = str,
+    source       = str, -- use this for printing the original line
     valid        = case regexM of
         Just _  -> True
         Nothing -> False,
@@ -213,13 +224,7 @@ readCompiledRegexps supprFileName = do
 
 isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
 isFullMatch rx ln =
-  let (offset, matchLen) =
-        -- Return the start offset and length of the match.  TDFA implements
-        -- POSIX matching which requires to deliver the longest match.  Thus,
-        -- if a full match is possible, MatchLength will equal the length of
-        -- the string.
-        Rgx.match (compiled rx) (content ln) :: (Rgx.MatchOffset, Rgx.MatchLength)
-  in matchLen == (length $ content ln)
+  Rgx.match (compiled rx) (content ln) :: Bool
 
 -- Scafaps, similar to diff, computes the longest common subsequence (LCS).
 -- In contrast to diff, we don't compare the lines for equality, but instead
