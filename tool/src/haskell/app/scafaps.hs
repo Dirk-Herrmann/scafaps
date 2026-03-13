@@ -396,14 +396,14 @@ main = do
   -- read input lines subject to suppression
   out1 "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
-  let lines = getNumberedLines rawLines
-  out3 $ "Input lines: " ++ show lines
+  let numberedLines = getNumberedLines rawLines
+  out3 $ "Input lines: " ++ show numberedLines
 
   let lenInitMatchingSeq =
-        lengthOfInitialMatchingSequence compiledRegexps lines
+        lengthOfInitialMatchingSequence compiledRegexps numberedLines
   out1 $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
 
-  let lcsTable = computeLcsTable compiledRegexps lines
+  let lcsTable = computeLcsTable compiledRegexps numberedLines
   out4 $ "lcsTable = " ++ show lcsTable
 
   return ()
