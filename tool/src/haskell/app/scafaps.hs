@@ -10,6 +10,7 @@
 -- problem with Python code.
 
 import Control.Monad (unless, when)
+import Data.List (findIndex)
 import Data.Maybe (fromMaybe)
 import Data.Vector ((!), constructN, fromList, Vector)
 import Data.Version (showVersion)
@@ -225,6 +226,13 @@ isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
 isFullMatch rx ln =
   Rgx.match (compiled rx) (content ln) :: Bool
 
+lengthOfInitialMatchingSequence :: [CompiledRegexp] -> [NumberedLine] -> Int
+lengthOfInitialMatchingSequence regexps numberedLines =
+  let zipped = zip regexps numberedLines
+      isNotFullMatch (rx,ln) = not $ isFullMatch rx ln
+      maybeFirstMismatch = findIndex isNotFullMatch zipped
+  in fromMaybe (length zipped) maybeFirstMismatch
+
 -- Scafaps, similar to diff, computes the LCS.  In contrast to diff, we don't
 -- compare the lines for equality, but instead see if the respective line is
 -- fully matched by the corresponding regular expression.  For an explanation
@@ -390,6 +398,10 @@ main = do
   rawLines <- readRawLines stdin
   let lines = getNumberedLines rawLines
   out3 $ "Input lines: " ++ show lines
+
+  let lenInitMatchingSeq =
+        lengthOfInitialMatchingSequence compiledRegexps lines
+  out1 $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
 
   let lcsTable = computeLcsTable compiledRegexps lines
   out4 $ "lcsTable = " ++ show lcsTable
