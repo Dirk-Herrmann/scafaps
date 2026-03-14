@@ -51,6 +51,9 @@ mkOutput :: Int -> String -> OutputLine
 mkOutput level string =
   OutputString level string
 
+out :: Int -> Int -> String -> IO ()
+out l v s = output v $ mkOutput l s
+
 errout :: String -> IO ()
 errout s = hPutStrLn stderr s
 
@@ -58,7 +61,7 @@ explainVerbosity :: Int -> IO ()
 explainVerbosity v =
   let prefix = "Verbosity level " ++ show v ++ ": "
       putVerbInfoLn :: String -> IO ()
-      putVerbInfoLn s = output v $ mkOutput 1 $ prefix ++ s
+      putVerbInfoLn s = out 1 v $ prefix ++ s
       maxv = show maxVerbosity
   in case v of
     0 -> return () -- Verbosity level 0: normal program output
@@ -377,20 +380,16 @@ main = do
   options <- Opts.execParser cmdLineOptionsGrammar
 
   -- handling verbosity
-  let verbosity = optVerbosity options
-  let out0 s = output verbosity $ mkOutput 0 s
-  let out1 s = output verbosity $ mkOutput 1 s
-  let out3 s = output verbosity $ mkOutput 3 s
-  let out4 s = output verbosity $ mkOutput 4 s
+  let v = optVerbosity options
   -- BEGIN Performance measurement
-  out4 $ printf "TIMESTAMP t0: %20.9f                  start" t0
+  out 4 v $ printf "TIMESTAMP t0: %20.9f                  start" t0
   -- END   Performance measurement
-  explainVerbosity verbosity
-  out3 $ show options
+  explainVerbosity v
+  out 3 v $ show options
 
   -- BEGIN Performance measurement
   t1 <- getSystemTimeAsFloat
-  out4 $ printf "TIMESTAMP t1: %20.9f  " t1
+  out 4 v $ printf "TIMESTAMP t1: %20.9f  " t1
     ++ printf "delta: %7.3f  read options" (t1 - t0)
   -- END   Performance measurement
 
@@ -402,19 +401,19 @@ main = do
   (compiledRegexps, commnts) <-
     case (supprFileExists, onFileNotFound) of
       (True, _) -> do
-        out1 $ "Reading suppressions from '" ++ supprFileName ++ "'"
+        out 1 v $ "Reading suppressions from '" ++ supprFileName ++ "'"
         (compiledRegexps, commnts, errors) <- readCompiledRegexps supprFileName
         when (errors > 0) $ do
           errout $ "Compilation errors in " ++ show errors ++ " suppressions"
           unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
-        out3 $ "Suppression regexps: " ++ show compiledRegexps
+        out 3 v $ "Suppression regexps: " ++ show compiledRegexps
         return (compiledRegexps, commnts)
       (False, FnfError) -> do
         errout $ "Error: " ++ fnfMsg
         exitWith $ ExitFailure 1
       (False, FnfEmpty) -> do
-        out1 $ fnfMsg ++ ", treating it as an empty file"
+        out 1 v $ fnfMsg ++ ", treating it as an empty file"
         return ([], [])
       (False, FnfPass) -> do
         -- TODO: Currently, the lines that are subject to suppression can only
@@ -422,32 +421,32 @@ main = do
         -- give a file name alternatively to stdin.  Then, for the case that a
         -- file name is given, it has to be re-considered what the purpose of
         -- the pass option would be.
-        out1 $ fnfMsg ++ ", passing input data through"
+        out 1 v $ fnfMsg ++ ", passing input data through"
         copyInputToOutput stdin
         exitSuccess
   -- BEGIN Performance measurement
   t2 <- getSystemTimeAsFloat
-  out4 $ printf "TIMESTAMP t2: %20.9f  " t2
+  out 4 v $ printf "TIMESTAMP t2: %20.9f  " t2
     ++ printf "delta: %7.3f  read suppressions" (t2 - t1)
   -- END   Performance measurement
 
   -- read input lines subject to suppression
-  out1 "Reading input lines (SCA output) from stdin"
+  out 1 v "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
   let numberedLines = getNumberedLines rawLines
-  out3 $ "Input lines: " ++ show numberedLines
+  out 3 v $ "Input lines: " ++ show numberedLines
   -- BEGIN Performance measurement
   t3 <- getSystemTimeAsFloat
-  out4 $ printf "TIMESTAMP t3: %20.9f  " t3
+  out 4 v $ printf "TIMESTAMP t3: %20.9f  " t3
     ++ printf "delta: %7.3f  read input lines" (t3 - t2)
   -- END   Performance measurement
 
   let lenInitMatchingSeq =
         lengthOfInitialMatchingSequence compiledRegexps numberedLines
-  out1 $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
+  out 1 v $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
   -- BEGIN Performance measurement
   t4 <- getSystemTimeAsFloat
-  out4 $ printf "TIMESTAMP t4: %20.9f  " t4
+  out 4 v $ printf "TIMESTAMP t4: %20.9f  " t4
     ++ printf "delta: %7.3f  compute initial matching sequence" (t4 - t3)
   -- END   Performance measurement
 
@@ -455,10 +454,10 @@ main = do
         computeLcsTable
           (drop lenInitMatchingSeq compiledRegexps)
           (drop lenInitMatchingSeq numberedLines)
-  out4 $ "lcsTable = " ++ show lcsTable
+  out 4 v $ "lcsTable = " ++ show lcsTable
   -- BEGIN Performance measurement
   t5 <- getSystemTimeAsFloat
-  out4 $ printf "TIMESTAMP t5: %20.9f  " t5
+  out 4 v $ printf "TIMESTAMP t5: %20.9f  " t5
     ++ printf "delta: %7.3f  computed lcstable" (t5 - t4)
   -- END   Performance measurement
 
