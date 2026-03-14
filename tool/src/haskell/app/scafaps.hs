@@ -121,6 +121,18 @@ instance Show CompiledRegexp where
 neverMatches :: Rgx.Regex
 neverMatches = Rgx.makeRegex "$a" :: Rgx.Regex
 
+rgxCompOpts :: Rgx.CompOption
+rgxCompOpts = Rgx.CompOption {
+  Rgx.caseSensitive  = True,
+  Rgx.multiline      = False,
+  Rgx.rightAssoc     = True,
+  Rgx.newSyntax      = False,
+  Rgx.lastStarGreedy = True }
+
+rgxExecOpts :: Rgx.ExecOption
+rgxExecOpts = Rgx.ExecOption {
+  Rgx.captureGroups  = False }
+
 -- For a line that is expected to contain a valid regexp, we create the
 -- CompiledRegexp structure.  As input we have the line number, the raw line
 -- that forms the source of regexp compilation and the collected comment lines
@@ -145,19 +157,11 @@ neverMatches = Rgx.makeRegex "$a" :: Rgx.Regex
 getCompiledRegexp :: Integer -> String -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
   let srcStr = "^" ++ str ++ "$"
-      compOpts = Rgx.CompOption {
-        Rgx.caseSensitive  = True,
-        Rgx.multiline      = False,
-        Rgx.rightAssoc     = True,
-        Rgx.newSyntax      = False,
-        Rgx.lastStarGreedy = True }
-      execOpts = Rgx.ExecOption {
-        Rgx.captureGroups  = False }
       -- to avoid "error" being called for bad regexps use makeRegexOptsM with
       -- Maybe: if the regex can be compiled, we get 'Just Regex', else
       -- 'Nothing'.  In case of succcess, the regex has to be extracted from
       -- the Maybe.
-      regexM = Rgx.makeRegexOptsM compOpts execOpts srcStr :: Maybe Rgx.Regex
+      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts srcStr :: Maybe Rgx.Regex
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str, -- use this for printing the original line
