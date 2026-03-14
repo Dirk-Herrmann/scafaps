@@ -10,6 +10,12 @@ GHC / Glasgow Haskell Compiler - main installer
 - GHCup - GHC updater
   - https://www.haskell.org/ghcup
 
+GHCi:
+- Wenn GHCi module nicht importieren kann, ist eine Lösung der Start von GHCi
+  über Cabal, wobei die entsprechenden module als Parameter angegeben werden
+  müssen, z.B. um Data.Regex.Base importieren zu können:
+  > cabal repl --build-depends regex-base
+
 Emacs for Haskell:
 - eglot ("Emacs Polyglot", "Emacs client for the Language Server Protocol (LSP))
   -https://www.gnu.org/software/emacs/manual/html_mono/eglot.html
