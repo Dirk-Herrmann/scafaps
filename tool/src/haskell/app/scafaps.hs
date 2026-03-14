@@ -284,7 +284,7 @@ computeLcsTable regexps numberedLines =
 copyInputToOutput :: Handle -> IO ()
 copyInputToOutput handle = do
   wholeFile <- hGetContents handle
-  hPutStr stdout wholeFile
+  putStr wholeFile
 
 ------------------------------------------------------------------------------
 -- Functions and types for command line parsing
