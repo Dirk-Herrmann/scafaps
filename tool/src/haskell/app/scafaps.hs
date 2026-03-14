@@ -10,7 +10,6 @@
 -- problem with Python code.
 
 import Control.Monad (unless, when)
-import Data.Either (isRight)
 import Data.List (findIndex)
 import Data.Maybe (fromJust, fromMaybe, isJust)
 import Data.Vector ((!), constructN, fromList, Vector)
@@ -21,8 +20,7 @@ import qualified Options.Applicative as Opts
 import Paths_scafaps (version)
 import System.Directory (doesFileExist)
 import System.Exit (exitSuccess, exitWith, ExitCode(ExitFailure))
-import System.IO (
-  hClose, hPutStr, hPutStrLn, openFile, stderr, stdin, stdout, IOMode(..))
+import System.IO (hClose, hPutStrLn, openFile, stderr, stdin, IOMode(..))
 import Text.Printf (printf)
 import qualified Text.Regex.TDFA as Rgx
 import qualified Text.Regex.TDFA.ReadRegex as RdRgx
@@ -103,7 +101,7 @@ getNumberedLines rawLines =
 data CompiledRegexp = CompiledRegexp {
     sourceLineNr :: Integer,
     source       :: String,
-    valid        :: Bool,
+    errStr       :: Maybe String,
     compiled     :: Rgx.Regex,
     comments     :: [NumberedLine]
   }
@@ -113,10 +111,10 @@ anchoredRegex str =
   "^" ++ str ++ "$"
 
 instance Show CompiledRegexp where
-  show (CompiledRegexp lnr src val _cmpld comm) =
+  show (CompiledRegexp lnr src err _cmpld comm) =
     "Regexp {lineNr = " ++ show lnr
     ++ ", content = " ++ show src
-    ++ ", valid = " ++ show val
+    ++ ", error = " ++ show err
     ++ ", compiled(\"" ++ anchoredRegex src ++ "\")"
     ++ ", comments = " ++ show comm ++ "}"
 
@@ -168,12 +166,18 @@ getCompiledRegexp nr str commnts =
       anchoredStr = anchoredRegex str
       regexM :: Maybe Rgx.Regex
       regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr
-      isValid = isRight parseResult && isJust regexM
+      regex = case regexM of
+        Just rx -> rx
+        _ -> neverMatches
+      errStrM = case (parseResult, regexM) of
+        (Left e, _) -> Just $ show e
+        (_, Nothing) -> Just $ "Offending ^ or $: >>" ++ anchoredStr ++ "<<"
+        _ -> Nothing
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str, -- use this for printing the original line
-    valid        = isValid,
-    compiled     = if isValid then fromJust regexM else neverMatches,
+    errStr       = errStrM,
+    compiled     = regex,
     comments     = commnts
   }
 
@@ -213,11 +217,7 @@ erroutRegexErr :: CompiledRegexp -> IO ()
 erroutRegexErr errorRegexp = do
   let srcLineNr = sourceLineNr errorRegexp
   errout $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
-  let supprSrc = source errorRegexp
-  let parseResult = RdRgx.parseRegex supprSrc
-  case parseResult of
-    Left errMsg -> errout $ show errMsg
-    Right _     -> errout $ "Offending suppression: >>" ++ supprSrc ++ "<<"
+  errout $ fromJust $ errStr errorRegexp
 
 readCompiledRegexps :: String -> IO ([CompiledRegexp], [NumberedLine], Int)
 readCompiledRegexps supprFileName = do
@@ -226,7 +226,7 @@ readCompiledRegexps supprFileName = do
   supprFileHandle <- openFile supprFileName ReadMode
   rawLines <- readRawLines supprFileHandle
   let (compiledRegexps, commnts) = getCompiledRegexps rawLines
-  let errorRegexps = filter (not . valid) compiledRegexps
+  let errorRegexps = filter (isJust . errStr) compiledRegexps
   let errors = length errorRegexps
   mapM_ erroutRegexErr errorRegexps
   hClose supprFileHandle
