@@ -32,21 +32,6 @@ import qualified Text.Regex.TDFA.ReadRegex as RdRgx
 maxVerbosity :: Int
 maxVerbosity = 5
 
-explainVerbosity :: Int -> IO ()
-explainVerbosity v =
-  let prefix = "Verbosity level " ++ show v ++ ": "
-      pubVerbInfoLn :: String -> IO ()
-      pubVerbInfoLn s = putStrLn $ prefix ++ s
-      maxv = show maxVerbosity
-  in case v of
-    0 -> return () -- Verbosity level 0: normal program output
-    1 -> pubVerbInfoLn "user support (io, also show matches)"
-    2 -> pubVerbInfoLn "user support (explain matching results)"
-    3 -> pubVerbInfoLn "user support (debugging user input)"
-    4 -> pubVerbInfoLn "dev debug (show internal results)"
-    5 -> pubVerbInfoLn "dev debug (show verbosity levels)"
-    _ -> pubVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
-
 -- Text shall only once go through the verbosity check.  Otherwise, in case of
 -- maxVerbosity, the level may get added twice.  Thus, output that is ready
 -- for the check gets type OutputLine.
@@ -68,6 +53,21 @@ mkOutput level string =
 
 errout :: String -> IO ()
 errout s = hPutStrLn stderr s
+
+explainVerbosity :: Int -> IO ()
+explainVerbosity v =
+  let prefix = "Verbosity level " ++ show v ++ ": "
+      putVerbInfoLn :: String -> IO ()
+      putVerbInfoLn s = output v $ mkOutput 1 $ prefix ++ s
+      maxv = show maxVerbosity
+  in case v of
+    0 -> return () -- Verbosity level 0: normal program output
+    1 -> putVerbInfoLn "user support (io, also show matches)"
+    2 -> putVerbInfoLn "user support (explain matching results)"
+    3 -> putVerbInfoLn "user support (debugging user input)"
+    4 -> putVerbInfoLn "dev debug (show internal results)"
+    5 -> putVerbInfoLn "dev debug (show verbosity levels)"
+    _ -> putVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
 
 ------------------------------------------------------------------------------
 -- Common input functions and types, and functions for reading input lines
