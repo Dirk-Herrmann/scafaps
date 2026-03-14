@@ -10,8 +10,9 @@
 -- problem with Python code.
 
 import Control.Monad (unless, when)
+import Data.Either (isRight)
 import Data.List (findIndex)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust)
 import Data.Vector ((!), constructN, fromList, Vector)
 import Data.Version (showVersion)
 import Data.Time.Clock.System (getSystemTime, systemNanoseconds, systemSeconds)
@@ -163,19 +164,16 @@ rgxExecOpts = Rgx.ExecOption {
 -- contains one of these anchors.
 getCompiledRegexp :: Integer -> String -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
-  let anchoredStr = anchoredRegex str
-      -- to avoid "error" being called for bad regexps use makeRegexOptsM with
-      -- Maybe: if the regex can be compiled, we get 'Just Regex', else
-      -- 'Nothing'.  In case of succcess, the regex has to be extracted from
-      -- the Maybe.
-      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr :: Maybe Rgx.Regex
+  let parseResult = RdRgx.parseRegex str
+      anchoredStr = anchoredRegex str
+      regexM :: Maybe Rgx.Regex
+      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr
+      isValid = isRight parseResult && isJust regexM
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str, -- use this for printing the original line
-    valid        = case regexM of
-        Just _  -> True
-        Nothing -> False,
-    compiled     = fromMaybe neverMatches regexM,
+    valid        = isValid,
+    compiled     = if isValid then fromJust regexM else neverMatches,
     comments     = commnts
   }
 
