@@ -106,10 +106,16 @@ data CompiledRegexp = CompiledRegexp {
     comments     :: [NumberedLine]
   }
 
+anchoredRegex :: String -> String
+anchoredRegex str =
+  "^" ++ str ++ "$"
+
 instance Show CompiledRegexp where
   show (CompiledRegexp lnr src val _cmpld comm) =
-    "Regexp {lineNr = " ++ show lnr ++ ", content = " ++ show src
-    ++ ", valid = " ++ show val ++ ", compiled(\"^" ++ src ++ "$\")"
+    "Regexp {lineNr = " ++ show lnr
+    ++ ", content = " ++ show src
+    ++ ", valid = " ++ show val
+    ++ ", compiled(\"" ++ anchoredRegex src ++ "\")"
     ++ ", comments = " ++ show comm ++ "}"
 
 -- Compiled "$a" is used as a regex that never matches.  Was tested against
@@ -156,12 +162,12 @@ rgxExecOpts = Rgx.ExecOption {
 -- contains one of these anchors.
 getCompiledRegexp :: Integer -> String -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
-  let srcStr = "^" ++ str ++ "$"
+  let anchoredStr = anchoredRegex str
       -- to avoid "error" being called for bad regexps use makeRegexOptsM with
       -- Maybe: if the regex can be compiled, we get 'Just Regex', else
       -- 'Nothing'.  In case of succcess, the regex has to be extracted from
       -- the Maybe.
-      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts srcStr :: Maybe Rgx.Regex
+      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr :: Maybe Rgx.Regex
   in CompiledRegexp {
     sourceLineNr = nr,
     source       = str, -- use this for printing the original line
