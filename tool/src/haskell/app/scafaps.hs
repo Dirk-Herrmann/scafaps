@@ -24,6 +24,7 @@ import System.IO (
   hClose, hPutStr, hPutStrLn, openFile, stderr, stdin, stdout, IOMode(..))
 import Text.Printf (printf)
 import qualified Text.Regex.TDFA as Rgx
+import qualified Text.Regex.TDFA.ReadRegex as RdRgx
 
 ------------------------------------------------------------------------------
 -- Verbosity controlled output functions and constants
@@ -213,9 +214,12 @@ getCompiledRegexps rawLines =
 erroutRegexErr :: CompiledRegexp -> IO ()
 erroutRegexErr errorRegexp = do
   let srcLineNr = sourceLineNr errorRegexp
-  let supprSrc = source errorRegexp
   errout $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
-  errout $ "  Offending suppression: >>" ++ supprSrc ++ "<<"
+  let supprSrc = source errorRegexp
+  let parseResult = RdRgx.parseRegex supprSrc
+  case parseResult of
+    Left errMsg -> errout $ show errMsg
+    Right _     -> errout $ "Offending suppression: >>" ++ supprSrc ++ "<<"
 
 readCompiledRegexps :: String -> IO ([CompiledRegexp], [NumberedLine], Int)
 readCompiledRegexps supprFileName = do
