@@ -341,9 +341,14 @@ prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
   Int -> Vector (Vector Int) -> [NumberedLine] ->
   IO ()
-prtResults v rxs lns lims lcsv cmts = do
-  let width = 5 -- FIXME
-  prtIMS v width rxs lns lims
+prtResults v regexes lines lIMS lcsTable cmts = do
+  let maxLinesLineNr = if null lines then 0 else lineNr $ last lines
+      maxRegexpsLineNr =
+        if null regexes then 0 else lineNr $ sourceLine $ last regexes
+      maxTailCommentsLineNr = if null cmts then 0 else lineNr $ last cmts
+      maxLineNr = max maxLinesLineNr $ max maxRegexpsLineNr maxTailCommentsLineNr
+      width = length $ show maxLineNr
+  prtIMS v width regexes lines lIMS
   -- showLCS v width rxs lns lcsv
   -- showTailComments v width cmts
   return ()
