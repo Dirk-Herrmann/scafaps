@@ -337,10 +337,23 @@ prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO 
 prtIMS v width rxs lns skip =
   mapM_ (prtMatch v width) $ take skip $ zip rxs lns
 
+prtLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] ->
+  Vector (Vector Int) -> IO (Int, Int)
+prtLcsDiff v width regexes lines lcsTable =
+  return (0, 0) -- TODO
+
+prtTailComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
+prtTailComments v width cmts =
+  return () -- TODO
+
+prtDiffSummary :: Verbosity -> (Int,Int) -> IO ()
+prtDiffSummary v counts =
+  return () -- TODO
+
 prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
   Int -> Vector (Vector Int) -> [NumberedLine] ->
-  IO ()
+  IO (Int, Int)
 prtResults v regexes lines lIMS lcsTable cmts = do
   let maxLinesLineNr = if null lines then 0 else lineNr $ last lines
       maxRegexpsLineNr =
@@ -349,9 +362,10 @@ prtResults v regexes lines lIMS lcsTable cmts = do
       maxLineNr = max maxLinesLineNr $ max maxRegexpsLineNr maxTailCommentsLineNr
       width = length $ show maxLineNr
   prtIMS v width regexes lines lIMS
-  -- showLCS v width rxs lns lcsv
-  -- showTailComments v width cmts
-  return ()
+  counts <- prtLcsDiff v width regexes lines lcsTable
+  prtTailComments v width cmts
+  prtDiffSummary v counts
+  return counts
 
 copyInputToOutput :: Handle -> IO ()
 copyInputToOutput handle = do
@@ -529,11 +543,19 @@ main = do
     ++ printf "delta: %7.3f  computed lcstable" (t5 - t4)
   -- END   Performance measurement
 
-  prtResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
+  counts <-
+    prtResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
   -- BEGIN Performance measurement
   t6 <- getSystemTimeAsFloat
   prt 4 v $ printf "TIMESTAMP t6: %20.9f  " t6
     ++ printf "delta: %7.3f  show results" (t6 - t5)
   -- END   Performance measurement
 
-  return ()
+  when ((snd counts > 0) && optErrorOnUnsuppressedInput options) $ do
+    prtErr "There were unmatched input lines, exiting with error."
+    exitWith $ ExitFailure 1
+  when ((fst counts > 0) && optErrorOnUnusedSuppressions options) $ do
+    prtErr "There were unmatched suppressions, exiting with error."
+    exitWith $ ExitFailure 1
+  prt 1 v "Exiting successfully."
+  exitSuccess
