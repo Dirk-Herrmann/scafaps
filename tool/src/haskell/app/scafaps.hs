@@ -37,12 +37,12 @@ maxVerbosity = 5
 
 -- Text shall only once go through the verbosity check.  Otherwise, in case of
 -- maxVerbosity, the level may get added twice.  Thus, output that is ready
--- for the check gets type OutputLine.
-data OutputLine =
-  OutputString Level String
+-- for the check gets type ConditionallyPrintedLine.
+data ConditionallyPrintedLine =
+  ConditionallyPrintedLine Level String
 
-output :: Verbosity -> OutputLine -> IO ()
-output verbosity (OutputString level string)
+printConditionally :: Verbosity -> ConditionallyPrintedLine -> IO ()
+printConditionally verbosity (ConditionallyPrintedLine level string)
   | verbosity >= maxVerbosity =
       putStrLn $ "Verbosity " ++ show level ++ ": " ++ string
   | verbosity >= level =
@@ -50,12 +50,12 @@ output verbosity (OutputString level string)
   | otherwise =
       return ()
 
-mkOutput :: Level -> String -> OutputLine
-mkOutput level string =
-  OutputString level string
+mkConditionallyPrintedLine :: Level -> String -> ConditionallyPrintedLine
+mkConditionallyPrintedLine level string =
+  ConditionallyPrintedLine level string
 
 prt :: Level -> Verbosity -> String -> IO ()
-prt l v s = output v $ mkOutput l s
+prt l v s = printConditionally v $ mkConditionallyPrintedLine l s
 
 prtErr :: String -> IO ()
 prtErr s = hPutStrLn stderr s
