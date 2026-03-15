@@ -190,7 +190,7 @@ getCompiledRegexp nr str cmts =
     comments     = cmts
   }
 
-isComment :: [Char] -> Bool
+isComment :: RawLine -> Bool
 isComment rawLine =
   not (null rawLine) && (head rawLine == '#')
 
