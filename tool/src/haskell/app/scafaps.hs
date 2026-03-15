@@ -29,16 +29,17 @@ import qualified Text.Regex.TDFA.ReadRegex as RdRgx
 -- Verbosity controlled output functions and constants
 ------------------------------------------------------------------------------
 
-maxVerbosity :: Int
+type Verbosity = Int
+maxVerbosity :: Verbosity
 maxVerbosity = 5
 
 -- Text shall only once go through the verbosity check.  Otherwise, in case of
 -- maxVerbosity, the level may get added twice.  Thus, output that is ready
 -- for the check gets type OutputLine.
 data OutputLine =
-  OutputString Int String
+  OutputString Verbosity String
 
-output :: Int -> OutputLine -> IO ()
+output :: Verbosity -> OutputLine -> IO ()
 output verbosity (OutputString level string)
   | verbosity >= maxVerbosity =
       putStrLn $ "Verbosity " ++ show level ++ ": " ++ string
@@ -51,13 +52,13 @@ mkOutput :: Int -> String -> OutputLine
 mkOutput level string =
   OutputString level string
 
-out :: Int -> Int -> String -> IO ()
+out :: Int -> Verbosity -> String -> IO ()
 out l v s = output v $ mkOutput l s
 
 errout :: String -> IO ()
 errout s = hPutStrLn stderr s
 
-explainVerbosity :: Int -> IO ()
+explainVerbosity :: Verbosity -> IO ()
 explainVerbosity v =
   let prefix = "Verbosity level " ++ show v ++ ": "
       putVerbInfoLn :: String -> IO ()
@@ -313,7 +314,7 @@ data Options = Options {
     optKeepGoingWithCompileError :: Bool,
     optErrorOnUnsuppressedInput :: Bool,
     optErrorOnUnusedSuppressions :: Bool,
-    optVerbosity :: Int
+    optVerbosity :: Verbosity
   } deriving (Show)
 
 cmdLineOptionsGrammarPart :: Opts.Parser Options
