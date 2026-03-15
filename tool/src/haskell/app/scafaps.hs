@@ -81,17 +81,18 @@ explainVerbosity v =
 ------------------------------------------------------------------------------
 
 type RawLine = String
+type LineNr  = Int
 
 readRawLines :: Handle -> IO [RawLine]
 readRawLines handle = do
   wholeFile <- hGetContents handle
   return $ lines wholeFile
 
-enumerateRawLines :: [RawLine] -> [(Int, RawLine)]
+enumerateRawLines :: [RawLine] -> [(LineNr, RawLine)]
 enumerateRawLines rawLines = zip [1..] rawLines
 
 data NumberedLine = NumberedLine {
-    lineNr :: Int,
+    lineNr :: LineNr,
     content :: RawLine
   } deriving (Show)
 
@@ -107,7 +108,7 @@ getNumberedLines rawLines =
 ------------------------------------------------------------------------------
 
 data CompiledRegexp = CompiledRegexp {
-    sourceLineNr :: Int,
+    sourceLineNr :: LineNr,
     source       :: RawLine,
     errStr       :: Maybe String,
     compiled     :: Rgx.Regex,
@@ -168,7 +169,7 @@ rgxExecOpts = Rgx.ExecOption {
 -- becomes "^$", which is accepted by the compiler.  The only problem with
 -- option A is, that it will fail if the regexp string argument already
 -- contains one of these anchors.
-getCompiledRegexp :: Int -> RawLine -> [NumberedLine] -> CompiledRegexp
+getCompiledRegexp :: LineNr -> RawLine -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
   let parseResult = RdRgx.parseRegex str
       anchoredStr = anchoredRegex str
@@ -194,7 +195,7 @@ isComment rawLine =
   not (null rawLine) && (head rawLine == '#')
 
 getCompiledRegexpsHelper ::
-  [(Int, RawLine)] -> [CompiledRegexp] -> [NumberedLine]
+  [(LineNr, RawLine)] -> [CompiledRegexp] -> [NumberedLine]
   -> ([CompiledRegexp], [NumberedLine])
 -- End of list, just return what we have collected
 getCompiledRegexpsHelper [] regexes commnts =
@@ -316,7 +317,7 @@ type Width = Int
 
 -- The central formatting function for result output.  The format is:
 -- {lineTypeChar}{validityChar}{padded lineNr}: {content}
-showLine :: Verbosity -> Width -> LineType -> Bool -> Int -> RawLine -> IO ()
+showLine :: Verbosity -> Width -> LineType -> Bool -> LineNr -> RawLine -> IO ()
 showLine v width lineType valid lnNr ctnt =
   let level = toLevel lineType
       lineTypeChar = show lineType
