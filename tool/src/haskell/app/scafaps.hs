@@ -80,20 +80,22 @@ explainVerbosity v =
 -- subject to suppression
 ------------------------------------------------------------------------------
 
-readRawLines :: Handle -> IO [String]
+type RawLine = String
+
+readRawLines :: Handle -> IO [RawLine]
 readRawLines handle = do
   wholeFile <- hGetContents handle
   return $ lines wholeFile
 
-enumerateRawLines :: [String] -> [(Int, String)]
+enumerateRawLines :: [RawLine] -> [(Int, RawLine)]
 enumerateRawLines rawLines = zip [1..] rawLines
 
 data NumberedLine = NumberedLine {
     lineNr :: Int,
-    content :: String
+    content :: RawLine
   } deriving (Show)
 
-getNumberedLines :: [String] -> [NumberedLine]
+getNumberedLines :: [RawLine] -> [NumberedLine]
 getNumberedLines rawLines =
   let numberedLines = enumerateRawLines rawLines
       toLine (number, rawLine) =
@@ -106,13 +108,13 @@ getNumberedLines rawLines =
 
 data CompiledRegexp = CompiledRegexp {
     sourceLineNr :: Int,
-    source       :: String,
+    source       :: RawLine,
     errStr       :: Maybe String,
     compiled     :: Rgx.Regex,
     comments     :: [NumberedLine]
   }
 
-anchoredRegex :: String -> String
+anchoredRegex :: RawLine -> String
 anchoredRegex str =
   "^" ++ str ++ "$"
 
@@ -166,7 +168,7 @@ rgxExecOpts = Rgx.ExecOption {
 -- becomes "^$", which is accepted by the compiler.  The only problem with
 -- option A is, that it will fail if the regexp string argument already
 -- contains one of these anchors.
-getCompiledRegexp :: Int -> String -> [NumberedLine] -> CompiledRegexp
+getCompiledRegexp :: Int -> RawLine -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
   let parseResult = RdRgx.parseRegex str
       anchoredStr = anchoredRegex str
@@ -192,7 +194,7 @@ isComment rawLine =
   not (null rawLine) && (head rawLine == '#')
 
 getCompiledRegexpsHelper ::
-  [(Int, String)] -> [CompiledRegexp] -> [NumberedLine]
+  [(Int, RawLine)] -> [CompiledRegexp] -> [NumberedLine]
   -> ([CompiledRegexp], [NumberedLine])
 -- End of list, just return what we have collected
 getCompiledRegexpsHelper [] regexes commnts =
@@ -214,7 +216,7 @@ getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts =
 -- are added to the structure for that compiled regexp.  At the end of the
 -- list of strings can be some tail comments - these are returned separately,
 -- thus the resulting tuple of compiled regexps and (numbered) comment lines
-getCompiledRegexps :: [String] -> ([CompiledRegexp], [NumberedLine])
+getCompiledRegexps :: [RawLine] -> ([CompiledRegexp], [NumberedLine])
 getCompiledRegexps rawLines =
   let enumeratedLines = enumerateRawLines rawLines
   in getCompiledRegexpsHelper enumeratedLines [] []
@@ -314,7 +316,7 @@ type Width = Int
 
 -- The central formatting function for result output.  The format is:
 -- {lineTypeChar}{validityChar}{padded lineNr}: {content}
-showLine :: Verbosity -> Width -> LineType -> Bool -> Int -> String -> IO ()
+showLine :: Verbosity -> Width -> LineType -> Bool -> Int -> RawLine -> IO ()
 showLine v width lineType valid lnNr ctnt =
   let level = toLevel lineType
       lineTypeChar = show lineType
