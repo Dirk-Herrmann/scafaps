@@ -287,6 +287,72 @@ computeLcsTable regexps numberedLines =
         = constructN (1 + length linesV) $ innerLoopBody lcsTmp
   in constructN (1 + length regexpsV) outerLoopBody
 
+data LineType =
+  UnmatchedRegex   -- unmatched suppression regex
+  | UnmatchedInput -- unmatched input line
+  | MatchedRegex   -- matched suppression regex
+  | MatchedInput   -- matched input line
+  | CommentLine    -- comment line from suppression file
+
+-- First character in the output is the line type
+instance Show LineType where
+  show UnmatchedRegex = "-"
+  show UnmatchedInput = "+"
+  show MatchedRegex   = "~"
+  show MatchedInput   = "="
+  show CommentLine    = "#"
+
+-- Mismatches are always shown, matches and comments nur with verbosity>=1
+toLevel :: LineType -> Int
+toLevel UnmatchedRegex = 0
+toLevel UnmatchedInput = 0
+toLevel MatchedRegex   = 1
+toLevel MatchedInput   = 1
+toLevel CommentLine    = 1
+
+type Width = Int
+
+-- The central formatting function for result output.  The format is:
+-- {lineTypeChar}{validityChar}{padded lineNr}: {content}
+showLine :: Verbosity -> Width -> LineType -> Bool -> Int -> String -> IO ()
+showLine v width lineType valid lnNr ctnt =
+  let level = toLevel lineType
+      lineTypeChar = show lineType
+      validityChar = if valid then " " else "*"
+      paddedLineNr = printf "%*d" width lnNr
+      result = lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ ctnt
+  in out level v $ result
+
+showComment :: Verbosity -> Width -> NumberedLine -> IO ()
+showComment v width ln =
+  showLine v width CommentLine True (lineNr ln) (content ln)
+
+showComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
+showComments v width cmts =
+  mapM_ (showComment v width) cmts
+
+showMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
+showMatch v width (rx, ln) = do
+  showComments v width $ comments rx
+  out 2 v "Match:"
+  showLine v width MatchedRegex True (sourceLineNr rx) (source rx)
+  showLine v width MatchedInput True (lineNr ln) (content ln)
+
+showIMS :: Verbosity -> Int -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
+showIMS v width rxs lns skip =
+  mapM_ (showMatch v width) $ take skip $ zip rxs lns
+
+showResults ::
+  Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
+  Int -> Vector (Vector Int) -> [NumberedLine] ->
+  IO ()
+showResults v rxs lns lims lcsv cmts = do
+  let width = 5 -- FIXME
+  showIMS v width rxs lns lims
+  -- showLCS v width rxs lns lcsv
+  -- showTailComments v width cmts
+  return ()
+
 copyInputToOutput :: Handle -> IO ()
 copyInputToOutput handle = do
   wholeFile <- hGetContents handle
@@ -461,6 +527,13 @@ main = do
   t5 <- getSystemTimeAsFloat
   out 4 v $ printf "TIMESTAMP t5: %20.9f  " t5
     ++ printf "delta: %7.3f  computed lcstable" (t5 - t4)
+  -- END   Performance measurement
+
+  showResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
+  -- BEGIN Performance measurement
+  t6 <- getSystemTimeAsFloat
+  out 4 v $ printf "TIMESTAMP t6: %20.9f  " t6
+    ++ printf "delta: %7.3f  show results" (t6 - t5)
   -- END   Performance measurement
 
   return ()
