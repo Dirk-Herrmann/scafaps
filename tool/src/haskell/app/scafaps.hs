@@ -82,11 +82,11 @@ readRawLines handle = do
   wholeFile <- hGetContents handle
   return $ lines wholeFile
 
-enumerateRawLines :: [String] -> [(Integer, String)]
+enumerateRawLines :: [String] -> [(Int, String)]
 enumerateRawLines rawLines = zip [1..] rawLines
 
 data NumberedLine = NumberedLine {
-    lineNr :: Integer,
+    lineNr :: Int,
     content :: String
   } deriving (Show)
 
@@ -102,7 +102,7 @@ getNumberedLines rawLines =
 ------------------------------------------------------------------------------
 
 data CompiledRegexp = CompiledRegexp {
-    sourceLineNr :: Integer,
+    sourceLineNr :: Int,
     source       :: String,
     errStr       :: Maybe String,
     compiled     :: Rgx.Regex,
@@ -163,7 +163,7 @@ rgxExecOpts = Rgx.ExecOption {
 -- becomes "^$", which is accepted by the compiler.  The only problem with
 -- option A is, that it will fail if the regexp string argument already
 -- contains one of these anchors.
-getCompiledRegexp :: Integer -> String -> [NumberedLine] -> CompiledRegexp
+getCompiledRegexp :: Int -> String -> [NumberedLine] -> CompiledRegexp
 getCompiledRegexp nr str commnts =
   let parseResult = RdRgx.parseRegex str
       anchoredStr = anchoredRegex str
@@ -189,7 +189,7 @@ isComment rawLine =
   not (null rawLine) && (head rawLine == '#')
 
 getCompiledRegexpsHelper ::
-  [(Integer, String)] -> [CompiledRegexp] -> [NumberedLine]
+  [(Int, String)] -> [CompiledRegexp] -> [NumberedLine]
   -> ([CompiledRegexp], [NumberedLine])
 -- End of list, just return what we have collected
 getCompiledRegexpsHelper [] regexes commnts =
