@@ -120,12 +120,12 @@ anchoredRegex str =
   "^" ++ str ++ "$"
 
 instance Show CompiledRegexp where
-  show (CompiledRegexp lnr src err _cmpld comm) =
+  show (CompiledRegexp lnr src err _cmpld cmts) =
     "Regexp {lineNr = " ++ show lnr
     ++ ", content = " ++ show src
     ++ ", error = " ++ show err
     ++ ", compiled(\"" ++ anchoredRegex src ++ "\")"
-    ++ ", comments = " ++ show comm ++ "}"
+    ++ ", comments = " ++ show cmts ++ "}"
 
 -- Compiled "$a" is used as a regex that never matches.  Was tested against
 -- the following input strings: "" "a" "$a" "$" "\na" "\ra" "\n\ra" "\r\na"
@@ -170,7 +170,7 @@ rgxExecOpts = Rgx.ExecOption {
 -- option A is, that it will fail if the regexp string argument already
 -- contains one of these anchors.
 getCompiledRegexp :: LineNr -> RawLine -> [NumberedLine] -> CompiledRegexp
-getCompiledRegexp nr str commnts =
+getCompiledRegexp nr str cmts =
   let parseResult = RdRgx.parseRegex str
       anchoredStr = anchoredRegex str
       regexM :: Maybe Rgx.Regex
@@ -187,7 +187,7 @@ getCompiledRegexp nr str commnts =
     source       = str, -- use this for printing the original line
     errStr       = errStrM,
     compiled     = regex,
-    comments     = commnts
+    comments     = cmts
   }
 
 isComment :: [Char] -> Bool
@@ -198,18 +198,18 @@ getCompiledRegexpsHelper ::
   [(LineNr, RawLine)] -> [CompiledRegexp] -> [NumberedLine]
   -> ([CompiledRegexp], [NumberedLine])
 -- End of list, just return what we have collected
-getCompiledRegexpsHelper [] regexes commnts =
-  (reverse regexes, reverse commnts)
+getCompiledRegexpsHelper [] regexes cmts =
+  (reverse regexes, reverse cmts)
 -- Found a comment line, put it to our collection and move on
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes cmts
   | isComment rawLine =
       let newComment = NumberedLine { lineNr = rawLineNr, content = rawLine }
-      in getCompiledRegexpsHelper xs regexes $ newComment:commnts
+      in getCompiledRegexpsHelper xs regexes $ newComment:cmts
 -- Found a regexp line, create a CompiledRegex that also contains all the
 -- comments found so far.  Then, continue but start afresh collecting
 -- comments.
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes commnts =
-  let newRegexp = getCompiledRegexp rawLineNr rawLine (reverse commnts)
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes cmts =
+  let newRegexp = getCompiledRegexp rawLineNr rawLine (reverse cmts)
   in getCompiledRegexpsHelper xs (newRegexp:regexes) []
 
 -- The input list of strings is a mixture of comment lines and regexp lines.
@@ -234,12 +234,12 @@ readCompiledRegexps supprFileName = do
   -- subsequent lazy operations access the file contents.
   supprFileHandle <- openFile supprFileName ReadMode
   rawLines <- readRawLines supprFileHandle
-  let (compiledRegexps, commnts) = getCompiledRegexps rawLines
+  let (compiledRegexps, cmts) = getCompiledRegexps rawLines
   let errorRegexps = filter (isJust . errStr) compiledRegexps
   let errors = length errorRegexps
   mapM_ erroutRegexErr errorRegexps
   hClose supprFileHandle
-  return (compiledRegexps, commnts, errors)
+  return (compiledRegexps, cmts, errors)
 
 ------------------------------------------------------------------------------
 -- Functions to compute the longest common subsequence (LCS)
@@ -470,17 +470,17 @@ main = do
   supprFileExists <- doesFileExist supprFileName
   let onFileNotFound = optWhatIfFileNotFound options
   let fnfMsg = "Suppressions-file '" ++ supprFileName ++ "' not found"
-  (compiledRegexps, commnts) <-
+  (compiledRegexps, tailCmts) <-
     case (supprFileExists, onFileNotFound) of
       (True, _) -> do
         out 1 v $ "Reading suppressions from '" ++ supprFileName ++ "'"
-        (compiledRegexps, commnts, errors) <- readCompiledRegexps supprFileName
+        (compiledRegexps, cmts, errors) <- readCompiledRegexps supprFileName
         when (errors > 0) $ do
           errout $ "Compilation errors in " ++ show errors ++ " suppressions"
           unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
         out 3 v $ "Suppression regexps: " ++ show compiledRegexps
-        return (compiledRegexps, commnts)
+        return (compiledRegexps, cmts)
       (False, FnfError) -> do
         errout $ "Error: " ++ fnfMsg
         exitWith $ ExitFailure 1
