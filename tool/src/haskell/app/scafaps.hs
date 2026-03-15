@@ -30,6 +30,8 @@ import qualified Text.Regex.TDFA.ReadRegex as RdRgx
 ------------------------------------------------------------------------------
 
 type Verbosity = Int
+type Level     = Int
+
 maxVerbosity :: Verbosity
 maxVerbosity = 5
 
@@ -48,11 +50,11 @@ output verbosity (OutputString level string)
   | otherwise =
       return ()
 
-mkOutput :: Int -> String -> OutputLine
+mkOutput :: Level -> String -> OutputLine
 mkOutput level string =
   OutputString level string
 
-out :: Int -> Verbosity -> String -> IO ()
+out :: Level -> Verbosity -> String -> IO ()
 out l v s = output v $ mkOutput l s
 
 errout :: String -> IO ()
