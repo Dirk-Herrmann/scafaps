@@ -309,30 +309,20 @@ instance Show LineType where
   show MatchedInput   = "="
   show CommentLine    = "#"
 
--- Mismatches are always shown, matches and comments nur with verbosity>=1
-toLevel :: LineType -> Level
-toLevel UnmatchedRegex = 0
-toLevel UnmatchedInput = 0
-toLevel MatchedRegex   = 1
-toLevel MatchedInput   = 1
-toLevel CommentLine    = 1
-
 type Width = Int
 
 -- The central formatting function for result output.  The format is:
 -- {lineTypeChar}{validityChar}{padded lineNr}: {content}
-showLine :: Verbosity -> Width -> LineType -> Bool -> LineNr -> RawLine -> IO ()
-showLine v width lineType valid lnNr ctnt =
-  let level = toLevel lineType
-      lineTypeChar = show lineType
+showLine :: Width -> LineType -> Bool -> LineNr -> RawLine -> String
+showLine width lineType valid lnNr ctnt =
+  let lineTypeChar = show lineType
       validityChar = if valid then " " else "*"
       paddedLineNr = printf "%*d" width lnNr
-      result = lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ ctnt
-  in out level v $ result
+  in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ ctnt
 
 showComment :: Verbosity -> Width -> NumberedLine -> IO ()
 showComment v width ln =
-  showLine v width CommentLine True (lineNr ln) (content ln)
+  out 1 v $ showLine width CommentLine True (lineNr ln) (content ln)
 
 showComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
 showComments v width cmts =
@@ -342,8 +332,8 @@ showMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
 showMatch v width (rx, ln) = do
   showComments v width $ comments rx
   out 2 v "Match:"
-  showLine v width MatchedRegex True (sourceLineNr rx) (source rx)
-  showLine v width MatchedInput True (lineNr ln) (content ln)
+  out 1 v $ showLine width MatchedRegex True (sourceLineNr rx) (source rx)
+  out 1 v $ showLine width MatchedInput True (lineNr ln) (content ln)
 
 showIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
 showIMS v width rxs lns skip =
