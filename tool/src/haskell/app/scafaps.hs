@@ -108,8 +108,7 @@ getNumberedLines rawLines =
 ------------------------------------------------------------------------------
 
 data CompiledRegexp = CompiledRegexp {
-    sourceLineNr :: LineNr,
-    source       :: RawLine,
+    sourceLine   :: NumberedLine,
     errStr       :: Maybe String,
     compiled     :: Rgx.Regex,
     comments     :: [NumberedLine]
@@ -120,11 +119,11 @@ anchoredRegex str =
   "^" ++ str ++ "$"
 
 instance Show CompiledRegexp where
-  show (CompiledRegexp lnr src err _cmpld cmts) =
-    "Regexp {lineNr = " ++ show lnr
-    ++ ", content = " ++ show src
+  show (CompiledRegexp (NumberedLine lnNr ctnt) err _cmpld cmts) =
+    "Regexp {lineNr = " ++ show lnNr
+    ++ ", content = " ++ show ctnt
     ++ ", error = " ++ show err
-    ++ ", compiled(\"" ++ anchoredRegex src ++ "\")"
+    ++ ", compiled(\"" ++ anchoredRegex ctnt ++ "\")"
     ++ ", comments = " ++ show cmts ++ "}"
 
 -- Compiled "$a" is used as a regex that never matches.  Was tested against
@@ -183,8 +182,7 @@ getCompiledRegexp nr str cmts =
         (_, Nothing) -> Just $ "Offending ^ or $: >>" ++ anchoredStr ++ "<<"
         _ -> Nothing
   in CompiledRegexp {
-    sourceLineNr = nr,
-    source       = str, -- use this for printing the original line
+    sourceLine   = NumberedLine nr str,
     errStr       = errStrM,
     compiled     = regex,
     comments     = cmts
@@ -224,7 +222,7 @@ getCompiledRegexps rawLines =
 
 prtErrRegexCompile :: CompiledRegexp -> IO ()
 prtErrRegexCompile errorRegexp = do
-  let srcLineNr = sourceLineNr errorRegexp
+  let srcLineNr = lineNr $ sourceLine errorRegexp
   prtErr $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
   prtErr $ fromJust $ errStr errorRegexp
 
@@ -313,16 +311,16 @@ type Width = Int
 
 -- The central formatting function for result output.  The format is:
 -- {lineTypeChar}{validityChar}{padded lineNr}: {content}
-showLine :: Width -> LineType -> Bool -> LineNr -> RawLine -> String
-showLine width lineType valid lnNr ctnt =
+showLine :: Width -> LineType -> Bool -> NumberedLine -> String
+showLine width lineType valid line =
   let lineTypeChar = show lineType
       validityChar = if valid then " " else "*"
-      paddedLineNr = printf "%*d" width lnNr
-  in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ ctnt
+      paddedLineNr = printf "%*d" width $ lineNr line
+  in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ (content line)
 
 prtComment :: Verbosity -> Width -> NumberedLine -> IO ()
 prtComment v width ln =
-  prt 1 v $ showLine width CommentLine True (lineNr ln) (content ln)
+  prt 1 v $ showLine width CommentLine True ln
 
 prtComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
 prtComments v width cmts =
@@ -332,8 +330,8 @@ prtMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
 prtMatch v width (rx, ln) = do
   prtComments v width $ comments rx
   prt 2 v "Match:"
-  prt 1 v $ showLine width MatchedRegex True (sourceLineNr rx) (source rx)
-  prt 1 v $ showLine width MatchedInput True (lineNr ln) (content ln)
+  prt 1 v $ showLine width MatchedRegex True (sourceLine rx)
+  prt 1 v $ showLine width MatchedInput True ln
 
 prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
 prtIMS v width rxs lns skip =
