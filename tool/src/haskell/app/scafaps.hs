@@ -26,7 +26,7 @@ import qualified Text.Regex.TDFA as Rgx
 import qualified Text.Regex.TDFA.ReadRegex as RdRgx
 
 ------------------------------------------------------------------------------
--- Verbosity controlled output functions and constants
+-- Verbosity controlled output types, functions and constants
 ------------------------------------------------------------------------------
 
 type Verbosity = Int
@@ -289,6 +289,10 @@ computeLcsTable regexps numberedLines =
       outerLoopBody lcsTmp
         = constructN (1 + length linesV) $ innerLoopBody lcsTmp
   in constructN (1 + length regexpsV) outerLoopBody
+
+------------------------------------------------------------------------------
+-- Types and functions to output matching results
+------------------------------------------------------------------------------
 
 data LineType =
   UnmatchedRegex   -- unmatched suppression regex
