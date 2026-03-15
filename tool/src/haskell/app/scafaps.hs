@@ -54,26 +54,26 @@ mkOutput :: Level -> String -> OutputLine
 mkOutput level string =
   OutputString level string
 
-out :: Level -> Verbosity -> String -> IO ()
-out l v s = output v $ mkOutput l s
+prt :: Level -> Verbosity -> String -> IO ()
+prt l v s = output v $ mkOutput l s
 
-errout :: String -> IO ()
-errout s = hPutStrLn stderr s
+prtErr :: String -> IO ()
+prtErr s = hPutStrLn stderr s
 
-explainVerbosity :: Verbosity -> IO ()
-explainVerbosity v =
+prtVerbosityExplanation :: Verbosity -> IO ()
+prtVerbosityExplanation v =
   let prefix = "Verbosity level " ++ show v ++ ": "
-      putVerbInfoLn :: String -> IO ()
-      putVerbInfoLn s = out 1 v $ prefix ++ s
+      prtExplanation :: String -> IO ()
+      prtExplanation s = prt 1 v $ prefix ++ s
       maxv = show maxVerbosity
   in case v of
     0 -> return () -- Verbosity level 0: normal program output
-    1 -> putVerbInfoLn "user support (io, also show matches)"
-    2 -> putVerbInfoLn "user support (explain matching results)"
-    3 -> putVerbInfoLn "user support (debugging user input)"
-    4 -> putVerbInfoLn "dev debug (show internal results)"
-    5 -> putVerbInfoLn "dev debug (show verbosity levels)"
-    _ -> putVerbInfoLn $ "no such level, using " ++ maxv ++ " (max)"
+    1 -> prtExplanation "user support (io, also show matches)"
+    2 -> prtExplanation "user support (explain matching results)"
+    3 -> prtExplanation "user support (debugging user input)"
+    4 -> prtExplanation "dev debug (show internal results)"
+    5 -> prtExplanation "dev debug (show verbosity levels)"
+    _ -> prtExplanation $ "no such level, using " ++ maxv ++ " (max)"
 
 ------------------------------------------------------------------------------
 -- Common input functions and types, and functions for reading input lines
@@ -222,11 +222,11 @@ getCompiledRegexps rawLines =
   let enumeratedLines = enumerateRawLines rawLines
   in getCompiledRegexpsHelper enumeratedLines [] []
 
-erroutRegexErr :: CompiledRegexp -> IO ()
-erroutRegexErr errorRegexp = do
+prtErrRegexCompile :: CompiledRegexp -> IO ()
+prtErrRegexCompile errorRegexp = do
   let srcLineNr = sourceLineNr errorRegexp
-  errout $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
-  errout $ fromJust $ errStr errorRegexp
+  prtErr $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
+  prtErr $ fromJust $ errStr errorRegexp
 
 readCompiledRegexps :: String -> IO ([CompiledRegexp], [NumberedLine], Int)
 readCompiledRegexps supprFileName = do
@@ -237,7 +237,7 @@ readCompiledRegexps supprFileName = do
   let (compiledRegexps, cmts) = getCompiledRegexps rawLines
   let errorRegexps = filter (isJust . errStr) compiledRegexps
   let errors = length errorRegexps
-  mapM_ erroutRegexErr errorRegexps
+  mapM_ prtErrRegexCompile errorRegexps
   hClose supprFileHandle
   return (compiledRegexps, cmts, errors)
 
@@ -320,32 +320,32 @@ showLine width lineType valid lnNr ctnt =
       paddedLineNr = printf "%*d" width lnNr
   in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ ctnt
 
-showComment :: Verbosity -> Width -> NumberedLine -> IO ()
-showComment v width ln =
-  out 1 v $ showLine width CommentLine True (lineNr ln) (content ln)
+prtComment :: Verbosity -> Width -> NumberedLine -> IO ()
+prtComment v width ln =
+  prt 1 v $ showLine width CommentLine True (lineNr ln) (content ln)
 
-showComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
-showComments v width cmts =
-  mapM_ (showComment v width) cmts
+prtComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
+prtComments v width cmts =
+  mapM_ (prtComment v width) cmts
 
-showMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
-showMatch v width (rx, ln) = do
-  showComments v width $ comments rx
-  out 2 v "Match:"
-  out 1 v $ showLine width MatchedRegex True (sourceLineNr rx) (source rx)
-  out 1 v $ showLine width MatchedInput True (lineNr ln) (content ln)
+prtMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
+prtMatch v width (rx, ln) = do
+  prtComments v width $ comments rx
+  prt 2 v "Match:"
+  prt 1 v $ showLine width MatchedRegex True (sourceLineNr rx) (source rx)
+  prt 1 v $ showLine width MatchedInput True (lineNr ln) (content ln)
 
-showIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
-showIMS v width rxs lns skip =
-  mapM_ (showMatch v width) $ take skip $ zip rxs lns
+prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
+prtIMS v width rxs lns skip =
+  mapM_ (prtMatch v width) $ take skip $ zip rxs lns
 
-showResults ::
+prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
   Int -> Vector (Vector Int) -> [NumberedLine] ->
   IO ()
-showResults v rxs lns lims lcsv cmts = do
+prtResults v rxs lns lims lcsv cmts = do
   let width = 5 -- FIXME
-  showIMS v width rxs lns lims
+  prtIMS v width rxs lns lims
   -- showLCS v width rxs lns lcsv
   -- showTailComments v width cmts
   return ()
@@ -448,14 +448,14 @@ main = do
   -- handling verbosity
   let v = optVerbosity options
   -- BEGIN Performance measurement
-  out 4 v $ printf "TIMESTAMP t0: %20.9f                  start" t0
+  prt 4 v $ printf "TIMESTAMP t0: %20.9f                  start" t0
   -- END   Performance measurement
-  explainVerbosity v
-  out 3 v $ show options
+  prtVerbosityExplanation v
+  prt 3 v $ show options
 
   -- BEGIN Performance measurement
   t1 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t1: %20.9f  " t1
+  prt 4 v $ printf "TIMESTAMP t1: %20.9f  " t1
     ++ printf "delta: %7.3f  read options" (t1 - t0)
   -- END   Performance measurement
 
@@ -467,19 +467,19 @@ main = do
   (compiledRegexps, tailCmts) <-
     case (supprFileExists, onFileNotFound) of
       (True, _) -> do
-        out 1 v $ "Reading suppressions from '" ++ supprFileName ++ "'"
+        prt 1 v $ "Reading suppressions from '" ++ supprFileName ++ "'"
         (compiledRegexps, cmts, errors) <- readCompiledRegexps supprFileName
         when (errors > 0) $ do
-          errout $ "Compilation errors in " ++ show errors ++ " suppressions"
+          prtErr $ "Compilation errors in " ++ show errors ++ " suppressions"
           unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
-        out 3 v $ "Suppression regexps: " ++ show compiledRegexps
+        prt 3 v $ "Suppression regexps: " ++ show compiledRegexps
         return (compiledRegexps, cmts)
       (False, FnfError) -> do
-        errout $ "Error: " ++ fnfMsg
+        prtErr $ "Error: " ++ fnfMsg
         exitWith $ ExitFailure 1
       (False, FnfEmpty) -> do
-        out 1 v $ fnfMsg ++ ", treating it as an empty file"
+        prt 1 v $ fnfMsg ++ ", treating it as an empty file"
         return ([], [])
       (False, FnfPass) -> do
         -- TODO: Currently, the lines that are subject to suppression can only
@@ -487,49 +487,49 @@ main = do
         -- give a file name alternatively to stdin.  Then, for the case that a
         -- file name is given, it has to be re-considered what the purpose of
         -- the pass option would be.
-        out 1 v $ fnfMsg ++ ", passing input data through"
+        prt 1 v $ fnfMsg ++ ", passing input data through"
         copyInputToOutput stdin
         exitSuccess
   -- BEGIN Performance measurement
   t2 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t2: %20.9f  " t2
+  prt 4 v $ printf "TIMESTAMP t2: %20.9f  " t2
     ++ printf "delta: %7.3f  read suppressions" (t2 - t1)
   -- END   Performance measurement
 
   -- read input lines subject to suppression
-  out 1 v "Reading input lines (SCA output) from stdin"
+  prt 1 v "Reading input lines (SCA output) from stdin"
   rawLines <- readRawLines stdin
   let numberedLines = getNumberedLines rawLines
-  out 3 v $ "Input lines: " ++ show numberedLines
+  prt 3 v $ "Input lines: " ++ show numberedLines
   -- BEGIN Performance measurement
   t3 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t3: %20.9f  " t3
+  prt 4 v $ printf "TIMESTAMP t3: %20.9f  " t3
     ++ printf "delta: %7.3f  read input lines" (t3 - t2)
   -- END   Performance measurement
 
   let lenInitMatchingSeq =
         lengthOfInitialMatchingSequence compiledRegexps numberedLines
-  out 1 v $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
+  prt 1 v $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
   -- BEGIN Performance measurement
   t4 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t4: %20.9f  " t4
+  prt 4 v $ printf "TIMESTAMP t4: %20.9f  " t4
     ++ printf "delta: %7.3f  compute initial matching sequence" (t4 - t3)
   -- END   Performance measurement
 
   let remainingRegexps = drop lenInitMatchingSeq compiledRegexps
       remainingLines   = drop lenInitMatchingSeq numberedLines
       lcsTable = computeLcsTable remainingRegexps remainingLines
-  out 4 v $ "lcsTable = " ++ show lcsTable
+  prt 4 v $ "lcsTable = " ++ show lcsTable
   -- BEGIN Performance measurement
   t5 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t5: %20.9f  " t5
+  prt 4 v $ printf "TIMESTAMP t5: %20.9f  " t5
     ++ printf "delta: %7.3f  computed lcstable" (t5 - t4)
   -- END   Performance measurement
 
-  showResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
+  prtResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
   -- BEGIN Performance measurement
   t6 <- getSystemTimeAsFloat
-  out 4 v $ printf "TIMESTAMP t6: %20.9f  " t6
+  prt 4 v $ printf "TIMESTAMP t6: %20.9f  " t6
     ++ printf "delta: %7.3f  show results" (t6 - t5)
   -- END   Performance measurement
 
