@@ -39,7 +39,7 @@ maxVerbosity = 5
 -- maxVerbosity, the level may get added twice.  Thus, output that is ready
 -- for the check gets type OutputLine.
 data OutputLine =
-  OutputString Verbosity String
+  OutputString Level String
 
 output :: Verbosity -> OutputLine -> IO ()
 output verbosity (OutputString level string)
@@ -303,7 +303,7 @@ instance Show LineType where
   show CommentLine    = "#"
 
 -- Mismatches are always shown, matches and comments nur with verbosity>=1
-toLevel :: LineType -> Int
+toLevel :: LineType -> Level
 toLevel UnmatchedRegex = 0
 toLevel UnmatchedInput = 0
 toLevel MatchedRegex   = 1
@@ -338,7 +338,7 @@ showMatch v width (rx, ln) = do
   showLine v width MatchedRegex True (sourceLineNr rx) (source rx)
   showLine v width MatchedInput True (lineNr ln) (content ln)
 
-showIMS :: Verbosity -> Int -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
+showIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
 showIMS v width rxs lns skip =
   mapM_ (showMatch v width) $ take skip $ zip rxs lns
 
