@@ -453,10 +453,9 @@ main = do
     ++ printf "delta: %7.3f  compute initial matching sequence" (t4 - t3)
   -- END   Performance measurement
 
-  let lcsTable =
-        computeLcsTable
-          (drop lenInitMatchingSeq compiledRegexps)
-          (drop lenInitMatchingSeq numberedLines)
+  let remainingRegexps = drop lenInitMatchingSeq compiledRegexps
+      remainingLines   = drop lenInitMatchingSeq numberedLines
+      lcsTable = computeLcsTable remainingRegexps remainingLines
   out 4 v $ "lcsTable = " ++ show lcsTable
   -- BEGIN Performance measurement
   t5 <- getSystemTimeAsFloat
