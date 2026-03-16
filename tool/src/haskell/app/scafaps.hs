@@ -310,8 +310,8 @@ showLine width lineType valid ln =
   in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ (content ln)
 
 prtComment :: Verbosity -> Width -> Comment -> IO ()
-prtComment v width ln =
-  prt 1 v $ showLine width CommentLine True ln
+prtComment v width cmt =
+  prt 1 v $ showLine width CommentLine True cmt
 
 prtComments :: Verbosity -> Width -> [Comment] -> IO ()
 prtComments v width cmts =
