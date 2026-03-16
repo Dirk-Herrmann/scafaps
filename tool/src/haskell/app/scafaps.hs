@@ -327,7 +327,9 @@ prtIMS v width rxs lns skip =
 
 prtLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] ->
   Vector (Vector Int) -> IO (Int, Int)
-prtLcsDiff v width regexes lines lcsTable =
+prtLcsDiff v width rxs lns lcsTable = do
+  let regexpsV = fromList rxs  -- regexps as Vector
+      linesV   = fromList lns  -- lines as Vector
   return (0, 0) -- TODO
 
 prtTailComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
@@ -344,15 +346,15 @@ prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
   Int -> Vector (Vector Int) -> [NumberedLine] ->
   IO (Int, Int)
-prtResults v regexes lines lIMS lcsTable cmts = do
-  let maxLinesLineNr = if null lines then 0 else lineNr $ last lines
+prtResults v rxs lns lIMS lcsTable cmts = do
+  let maxLinesLineNr = if null lns then 0 else lineNr $ last lns
       maxRegexpsLineNr =
-        if null regexes then 0 else lineNr $ sourceLine $ last regexes
+        if null rxs then 0 else lineNr $ sourceLine $ last rxs
       maxTailCommentsLineNr = if null cmts then 0 else lineNr $ last cmts
       maxLineNr = max maxLinesLineNr $ max maxRegexpsLineNr maxTailCommentsLineNr
       width = length $ show maxLineNr
-  prtIMS v width regexes lines lIMS
-  counts <- prtLcsDiff v width regexes lines lcsTable
+  prtIMS v width rxs lns lIMS
+  counts <- prtLcsDiff v width (drop lIMS rxs) (drop lIMS lns) lcsTable
   prtTailComments v width cmts
   prtDiffSummary v counts
   return counts
