@@ -95,11 +95,13 @@ getNumberedLines rawLines =
 -- Input functions and types for reading suppressions
 ------------------------------------------------------------------------------
 
+type Comment = NumberedLine
+
 data CompiledRegexp = CompiledRegexp {
     sourceLine   :: NumberedLine,
-    errStr       :: Maybe String,
+    maybeError   :: Maybe String,
     compiled     :: Rgx.Regex,
-    comments     :: [NumberedLine]
+    comments     :: [Comment]
   }
 
 anchoredRegex :: RawLine -> String
@@ -156,23 +158,23 @@ rgxExecOpts = Rgx.ExecOption {
 -- becomes "^$", which is accepted by the compiler.  The only problem with
 -- option A is, that it will fail if the regexp string argument already
 -- contains one of these anchors.
-getCompiledRegexp :: LineNr -> RawLine -> [NumberedLine] -> CompiledRegexp
-getCompiledRegexp nr str cmts =
+getCompiledRegexp :: LineNr -> RawLine -> [Comment] -> CompiledRegexp
+getCompiledRegexp lnNr str cmts =
   let parseResult = RdRgx.parseRegex str
       anchoredStr = anchoredRegex str
-      regexM :: Maybe Rgx.Regex
-      regexM = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr
-      regex = case regexM of
-        Just rx -> rx
+      maybeRx :: Maybe Rgx.Regex
+      maybeRx = Rgx.makeRegexOptsM rgxCompOpts rgxExecOpts anchoredStr
+      rx = case maybeRx of
+        Just justRx -> justRx
         _ -> neverMatches
-      errStrM = case (parseResult, regexM) of
+      errStrM = case (parseResult, maybeRx) of
         (Left e, _) -> Just $ show e
         (_, Nothing) -> Just $ "Offending ^ or $: >>" ++ anchoredStr ++ "<<"
         _ -> Nothing
   in CompiledRegexp {
-    sourceLine   = NumberedLine nr str,
-    errStr       = errStrM,
-    compiled     = regex,
+    sourceLine   = NumberedLine lnNr str,
+    maybeError   = errStrM,
+    compiled     = rx,
     comments     = cmts
   }
 
@@ -181,51 +183,51 @@ isComment rawLine =
   not (null rawLine) && (head rawLine == '#')
 
 getCompiledRegexpsHelper ::
-  [(LineNr, RawLine)] -> [CompiledRegexp] -> [NumberedLine]
-  -> ([CompiledRegexp], [NumberedLine])
+  [(LineNr, RawLine)] -> [CompiledRegexp] -> [Comment]
+  -> ([CompiledRegexp], [Comment])
 -- End of list, just return what we have collected
-getCompiledRegexpsHelper [] regexes cmts =
-  (reverse regexes, reverse cmts)
+getCompiledRegexpsHelper [] rxs cmts =
+  (reverse rxs, reverse cmts)
 -- Found a comment line, put it to our collection and move on
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes cmts
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) rxs cmts
   | isComment rawLine =
-      let newComment = NumberedLine { lineNr = rawLineNr, content = rawLine }
-      in getCompiledRegexpsHelper xs regexes $ newComment:cmts
+      let newCmt = NumberedLine { lineNr = rawLineNr, content = rawLine }
+      in getCompiledRegexpsHelper xs rxs $ newCmt:cmts
 -- Found a regexp line, create a CompiledRegex that also contains all the
 -- comments found so far.  Then, continue but start afresh collecting
 -- comments.
-getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) regexes cmts =
-  let newRegexp = getCompiledRegexp rawLineNr rawLine (reverse cmts)
-  in getCompiledRegexpsHelper xs (newRegexp:regexes) []
+getCompiledRegexpsHelper ((rawLineNr,rawLine):xs) rxs cmts =
+  let newRx = getCompiledRegexp rawLineNr rawLine (reverse cmts)
+  in getCompiledRegexpsHelper xs (newRx:rxs) []
 
 -- The input list of strings is a mixture of comment lines and regexp lines.
 -- The comment lines are interpreted to belong to following regexp line and
 -- are added to the structure for that compiled regexp.  At the end of the
 -- list of strings can be some tail comments - these are returned separately,
 -- thus the resulting tuple of compiled regexps and (numbered) comment lines
-getCompiledRegexps :: [RawLine] -> ([CompiledRegexp], [NumberedLine])
+getCompiledRegexps :: [RawLine] -> ([CompiledRegexp], [Comment])
 getCompiledRegexps rawLines =
   let enumeratedLines = enumerateRawLines rawLines
   in getCompiledRegexpsHelper enumeratedLines [] []
 
 prtErrRegexCompile :: CompiledRegexp -> IO ()
 prtErrRegexCompile errorRegexp = do
-  let srcLineNr = lineNr $ sourceLine errorRegexp
-  prtErr $ "Error compiling suppression in line " ++ show srcLineNr ++ ":"
-  prtErr $ fromJust $ errStr errorRegexp
+  let lnNr = lineNr $ sourceLine errorRegexp
+  prtErr $ "Error compiling suppression in line " ++ show lnNr ++ ":"
+  prtErr $ fromJust $ maybeError errorRegexp
 
-readCompiledRegexps :: String -> IO ([CompiledRegexp], [NumberedLine], Int)
+readCompiledRegexps :: String -> IO ([CompiledRegexp], [Comment], Int)
 readCompiledRegexps supprFileName = do
   -- intentionally not using withFile below: it closes the file _before_
   -- subsequent lazy operations access the file contents.
   supprFileHandle <- openFile supprFileName ReadMode
   rawLines <- readRawLines supprFileHandle
-  let (compiledRegexps, cmts) = getCompiledRegexps rawLines
-  let errorRegexps = filter (isJust . errStr) compiledRegexps
+  let (rxs, cmts) = getCompiledRegexps rawLines
+  let errorRegexps = filter (isJust . maybeError) rxs
   let errors = length errorRegexps
   mapM_ prtErrRegexCompile errorRegexps
   hClose supprFileHandle
-  return (compiledRegexps, cmts, errors)
+  return (rxs, cmts, errors)
 
 ------------------------------------------------------------------------------
 -- Functions to compute the longest common subsequence (LCS)
@@ -236,9 +238,9 @@ isFullMatch rx ln =
   Rgx.match (compiled rx) (content ln) :: Bool
 
 lengthOfInitialMatchingSequence :: [CompiledRegexp] -> [NumberedLine] -> Int
-lengthOfInitialMatchingSequence regexps numberedLines =
-  let zipped = zip regexps numberedLines
-      isNotFullMatch (rx,ln) = not $ isFullMatch rx ln
+lengthOfInitialMatchingSequence rxs lns =
+  let zipped = zip rxs lns
+      isNotFullMatch (rx, ln) = not $ isFullMatch rx ln
       maybeFirstMismatch = findIndex isNotFullMatch zipped
   in fromMaybe (length zipped) maybeFirstMismatch
 
@@ -256,15 +258,15 @@ lengthOfInitialMatchingSequence regexps numberedLines =
 --   size of the resulting vector and determines the number of iterations, and
 --   the given function corresponds to the loop body.
 computeLcsTable :: [CompiledRegexp] -> [NumberedLine] -> Vector (Vector Int)
-computeLcsTable regexps numberedLines =
-  let regexpsV = fromList regexps        -- regexps as Vector
-      linesV   = fromList numberedLines  -- lines as Vector
+computeLcsTable rxs lns =
+  let rxsV = fromList rxs  -- regexps as Vector
+      lnsV = fromList lns  -- lines as Vector
       innerLoopBody :: Vector (Vector Int) -> Vector Int -> Int
       innerLoopBody lcsTmp rowTmp =
         let i = length lcsTmp
             j = length rowTmp
-            rx = regexpsV ! (i - 1) -- lazy, otherwise error with i==0
-            ln = linesV ! (j - 1)   -- lazy, otherwise error with j==0
+            rx = rxsV ! (i - 1) -- lazy, otherwise error with i==0
+            ln = lnsV ! (j - 1) -- lazy, otherwise error with j==0
             result
               | i == 0 = 0
               | j == 0 = 0
@@ -273,8 +275,8 @@ computeLcsTable regexps numberedLines =
         in result
       outerLoopBody :: Vector (Vector Int) -> Vector Int
       outerLoopBody lcsTmp
-        = constructN (1 + length linesV) $ innerLoopBody lcsTmp
-  in constructN (1 + length regexpsV) outerLoopBody
+        = constructN (1 + length lnsV) $ innerLoopBody lcsTmp
+  in constructN (1 + length rxsV) outerLoopBody
 
 ------------------------------------------------------------------------------
 -- Types and functions to output matching results
@@ -300,17 +302,17 @@ type Width = Int
 -- The central formatting function for result output.  The format is:
 -- {lineTypeChar}{validityChar}{padded lineNr}: {content}
 showLine :: Width -> LineType -> Bool -> NumberedLine -> String
-showLine width lineType valid line =
+showLine width lineType valid ln =
   let lineTypeChar = show lineType
       validityChar = if valid then " " else "*"
-      paddedLineNr = printf "%*d" width $ lineNr line
-  in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ (content line)
+      paddedLineNr = printf "%*d" width $ lineNr ln
+  in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ (content ln)
 
-prtComment :: Verbosity -> Width -> NumberedLine -> IO ()
+prtComment :: Verbosity -> Width -> Comment -> IO ()
 prtComment v width ln =
   prt 1 v $ showLine width CommentLine True ln
 
-prtComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
+prtComments :: Verbosity -> Width -> [Comment] -> IO ()
 prtComments v width cmts =
   mapM_ (prtComment v width) cmts
 
@@ -332,19 +334,19 @@ prtLcsDiff v width rxs lns lcsTable = do
       linesV   = fromList lns  -- lines as Vector
   return (0, 0) -- TODO
 
-prtTailComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
+prtTailComments :: Verbosity -> Width -> [Comment] -> IO ()
 prtTailComments =
   prtComments
 
 prtDiffSummary :: Verbosity -> (Int, Int) -> IO ()
-prtDiffSummary v (unmatchedRegexes, unmatchedLines) = do
-  let level = if (unmatchedRegexes + unmatchedLines) > 0 then 0 else 1
-  prt level v $ "Unmatched input lines: " ++ show unmatchedLines
-  prt level v $ "Unmatched suppressions: " ++ show unmatchedRegexes
+prtDiffSummary v (unmatchedRxs, unmatchedLns) = do
+  let level = if (unmatchedRxs + unmatchedLns) > 0 then 0 else 1
+  prt level v $ "Unmatched input lines: " ++ show unmatchedLns
+  prt level v $ "Unmatched suppressions: " ++ show unmatchedRxs
 
 prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
-  Int -> Vector (Vector Int) -> [NumberedLine] ->
+  Int -> Vector (Vector Int) -> [Comment] ->
   IO (Int, Int)
 prtResults v rxs lns lIMS lcsTable cmts = do
   let maxLinesLineNr = if null lns then 0 else lineNr $ last lns
