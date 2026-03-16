@@ -95,10 +95,11 @@ getNumberedLines rawLines =
 -- Input functions and types for reading suppressions
 ------------------------------------------------------------------------------
 
+type InputLine = NumberedLine
 type Comment = NumberedLine
 
 data CompiledRegexp = CompiledRegexp {
-    sourceLine   :: NumberedLine,
+    sourceLine   :: InputLine,
     maybeError   :: Maybe String,
     compiled     :: Rgx.Regex,
     comments     :: [Comment]
@@ -233,11 +234,11 @@ readCompiledRegexps supprFileName = do
 -- Functions to compute the longest common subsequence (LCS)
 ------------------------------------------------------------------------------
 
-isFullMatch :: CompiledRegexp -> NumberedLine -> Bool
+isFullMatch :: CompiledRegexp -> InputLine -> Bool
 isFullMatch rx ln =
   Rgx.match (compiled rx) (content ln) :: Bool
 
-lengthOfInitialMatchingSequence :: [CompiledRegexp] -> [NumberedLine] -> Int
+lengthOfInitialMatchingSequence :: [CompiledRegexp] -> [InputLine] -> Int
 lengthOfInitialMatchingSequence rxs lns =
   let zipped = zip rxs lns
       isNotFullMatch (rx, ln) = not $ isFullMatch rx ln
@@ -257,7 +258,7 @@ lengthOfInitialMatchingSequence rxs lns =
 --   A call to constructN represents a loop - the given size argument is the
 --   size of the resulting vector and determines the number of iterations, and
 --   the given function corresponds to the loop body.
-computeLcsTable :: [CompiledRegexp] -> [NumberedLine] -> Vector (Vector Int)
+computeLcsTable :: [CompiledRegexp] -> [InputLine] -> Vector (Vector Int)
 computeLcsTable rxs lns =
   let rxsV = fromList rxs  -- regexps as Vector
       lnsV = fromList lns  -- lines as Vector
@@ -316,18 +317,18 @@ prtComments :: Verbosity -> Width -> [Comment] -> IO ()
 prtComments v width cmts =
   mapM_ (prtComment v width) cmts
 
-prtMatch :: Verbosity -> Width -> (CompiledRegexp, NumberedLine) -> IO ()
+prtMatch :: Verbosity -> Width -> (CompiledRegexp, InputLine) -> IO ()
 prtMatch v width (rx, ln) = do
   prtComments v width $ comments rx
   prt 2 v "Match:"
   prt 1 v $ showLine width MatchedRegex True (sourceLine rx)
   prt 1 v $ showLine width MatchedInput True ln
 
-prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] -> Int -> IO ()
+prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] -> Int -> IO ()
 prtIMS v width rxs lns skip =
   mapM_ (prtMatch v width) $ take skip $ zip rxs lns
 
-prtLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [NumberedLine] ->
+prtLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] ->
   Vector (Vector Int) -> IO (Int, Int)
 prtLcsDiff v width rxs lns lcsTable = do
   let regexpsV = fromList rxs  -- regexps as Vector
@@ -345,7 +346,7 @@ prtDiffSummary v (unmatchedRxs, unmatchedLns) = do
   prt level v $ "Unmatched suppressions: " ++ show unmatchedRxs
 
 prtResults ::
-  Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
+  Verbosity -> [CompiledRegexp] -> [InputLine] ->
   Int -> Vector (Vector Int) -> [Comment] ->
   IO (Int, Int)
 prtResults v rxs lns lIMS lcsTable cmts = do
