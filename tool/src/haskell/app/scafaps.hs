@@ -349,16 +349,16 @@ prtResults ::
   Verbosity -> [CompiledRegexp] -> [InputLine] ->
   Int -> Vector (Vector Int) -> [Comment] ->
   IO (Int, Int)
-prtResults v rxs lns lIMS lcsTable cmts = do
+prtResults v rxs lns lIMS lcsTable tailCmts = do
   let maxLinesLineNr = if null lns then 0 else lineNr $ last lns
       maxRegexpsLineNr =
         if null rxs then 0 else lineNr $ sourceLine $ last rxs
-      maxTailCommentsLineNr = if null cmts then 0 else lineNr $ last cmts
+      maxTailCommentsLineNr = if null tailCmts then 0 else lineNr $ last tailCmts
       maxLineNr = max maxLinesLineNr $ max maxRegexpsLineNr maxTailCommentsLineNr
       width = length $ show maxLineNr
   prtIMS v width rxs lns lIMS
   counts <- prtLcsDiff v width (drop lIMS rxs) (drop lIMS lns) lcsTable
-  prtTailComments v width cmts
+  prtTailComments v width tailCmts
   prtDiffSummary v counts
   return counts
 
@@ -476,17 +476,17 @@ main = do
   supprFileExists <- doesFileExist supprFileName
   let onFileNotFound = optWhatIfFileNotFound options
   let fnfMsg = "Suppressions-file '" ++ supprFileName ++ "' not found"
-  (compiledRegexps, tailCmts) <-
+  (rxs, tailCmts) <-
     case (supprFileExists, onFileNotFound) of
       (True, _) -> do
         prt 1 v $ "Reading suppressions from '" ++ supprFileName ++ "'"
-        (compiledRegexps, cmts, errors) <- readCompiledRegexps supprFileName
+        (rxs, tailCmts, errors) <- readCompiledRegexps supprFileName
         when (errors > 0) $ do
           prtErr $ "Compilation errors in " ++ show errors ++ " suppressions"
           unless (optKeepGoingWithCompileError options) $ do
             exitWith $ ExitFailure 1
-        prt 3 v $ "Suppression regexps: " ++ show compiledRegexps
-        return (compiledRegexps, cmts)
+        prt 3 v $ "Suppression regexps: " ++ show rxs
+        return (rxs, tailCmts)
       (False, FnfError) -> do
         prtErr $ "Error: " ++ fnfMsg
         exitWith $ ExitFailure 1
@@ -520,7 +520,7 @@ main = do
   -- END   Performance measurement
 
   let lenInitMatchingSeq =
-        lengthOfInitialMatchingSequence compiledRegexps numberedLines
+        lengthOfInitialMatchingSequence rxs numberedLines
   prt 1 v $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
   -- BEGIN Performance measurement
   t4 <- getSystemTimeAsFloat
@@ -528,7 +528,7 @@ main = do
     ++ printf "delta: %7.3f  compute initial matching sequence" (t4 - t3)
   -- END   Performance measurement
 
-  let remainingRegexps = drop lenInitMatchingSeq compiledRegexps
+  let remainingRegexps = drop lenInitMatchingSeq rxs
       remainingLines   = drop lenInitMatchingSeq numberedLines
       lcsTable = computeLcsTable remainingRegexps remainingLines
   prt 4 v $ "lcsTable = " ++ show lcsTable
@@ -539,7 +539,7 @@ main = do
   -- END   Performance measurement
 
   counts <-
-    prtResults v compiledRegexps numberedLines lenInitMatchingSeq lcsTable tailCmts
+    prtResults v rxs numberedLines lenInitMatchingSeq lcsTable tailCmts
   -- BEGIN Performance measurement
   t6 <- getSystemTimeAsFloat
   prt 4 v $ printf "TIMESTAMP t6: %20.9f  " t6
