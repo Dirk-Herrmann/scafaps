@@ -35,6 +35,7 @@ type Level     = Int
 maxVerbosity :: Verbosity
 maxVerbosity = 5
 
+-- TODO: prt -> prc for printConditionally
 prt :: Level -> Verbosity -> String -> IO ()
 prt level verbosity string
   | verbosity >= maxVerbosity =
@@ -330,12 +331,14 @@ prtLcsDiff v width regexes lines lcsTable =
   return (0, 0) -- TODO
 
 prtTailComments :: Verbosity -> Width -> [NumberedLine] -> IO ()
-prtTailComments v width cmts =
-  return () -- TODO
+prtTailComments =
+  prtComments
 
-prtDiffSummary :: Verbosity -> (Int,Int) -> IO ()
-prtDiffSummary v counts =
-  return () -- TODO
+prtDiffSummary :: Verbosity -> (Int, Int) -> IO ()
+prtDiffSummary v (unmatchedRegexes, unmatchedLines) = do
+  let level = if (unmatchedRegexes + unmatchedLines) > 0 then 0 else 1
+  prt level v $ "Unmatched input lines: " ++ show unmatchedLines
+  prt level v $ "Unmatched suppressions: " ++ show unmatchedRegexes
 
 prtResults ::
   Verbosity -> [CompiledRegexp] -> [NumberedLine] ->
