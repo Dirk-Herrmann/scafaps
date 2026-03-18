@@ -328,6 +328,39 @@ prtIMS :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] -> Int -> IO ()
 prtIMS v width rxs lns skip =
   mapM_ (prtMatch v width) $ take skip $ zip rxs lns
 
+data MatchScenario =
+  UnmatchedInputLine
+  | UnmatchedSuppression
+  | Match
+  | MatchTypeError
+
+getMatchScenario :: Vector CompiledRegexp -> Vector InputLine -> Vector (Vector Int)
+  -> Int -> Int -> (MatchScenario, String)
+getMatchScenario rxsV lnsV lcsTable i j
+  | i == 0 =
+    (UnmatchedInputLine, "Unmatched input line at head of input lines")
+  | j == 0 =
+    (UnmatchedSuppression, "Unmatched suppression at head of suppressions")
+  | isMatch && (lcsTable ! i ! (j-1)) == (lcsTable ! i ! j) =
+    -- Line matches, but we prefer matches against earliesr lines.  Here, when
+    -- we leave the line unmatched, there is an earlier match with same lcs.
+    (UnmatchedInputLine, "Deliberately preferring unmatched line")
+  | isMatch && (lcsTable ! (i-1) ! j) == (lcsTable ! i ! j) =
+    -- Similar, but here we can leave the suppression unmatched.
+    (UnmatchedSuppression, "Deliberately preferring unmatched suppression")
+  | isMatch =
+    -- We must use this match
+    (Match, "")
+  | (lcsTable ! i ! (j-1)) > (lcsTable ! (i-1) ! j) =
+    (UnmatchedInputLine, "Unmatched input line necessary to achieve lcs")
+  | (lcsTable ! i ! (j-1)) == (lcsTable ! (i-1) ! j) =
+    (UnmatchedInputLine, "Show unmatched suppressions before unmatched lines")
+  | (lcsTable ! i ! (j-1)) < (lcsTable ! (i-1) ! j) =
+    (UnmatchedSuppression, "Unmatched suppression necessary to achieve lcs")
+  | otherwise =
+    (MatchTypeError, "")
+  where isMatch = isFullMatch (rxsV ! (i-1)) (lnsV ! (j-1))
+
 prtLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] ->
   Vector (Vector Int) -> IO (Int, Int)
 prtLcsDiff v width rxs lns lcsTable = do
