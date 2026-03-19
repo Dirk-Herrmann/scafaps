@@ -283,6 +283,13 @@ computeLcsTable rxs lns =
 -- Types and functions to output matching results
 ------------------------------------------------------------------------------
 
+data LevelString =
+  LString Level String
+
+prcLevelString :: Verbosity -> LevelString -> IO ()
+prcLevelString v (LString level string) =
+  prc v level string
+
 data LineType =
   UnmatchedRegex   -- unmatched suppression regex
   | UnmatchedInput -- unmatched input line
@@ -309,24 +316,27 @@ showLine width lineType valid ln =
       paddedLineNr = printf "%*d" width $ lineNr ln
   in lineTypeChar ++ validityChar ++ paddedLineNr ++ ": " ++ (content ln)
 
-prcComment :: Verbosity -> Width -> Comment -> IO ()
-prcComment v width cmt =
-  prc v 1 $ showLine width CommentLine True cmt
+commentToLStr :: Width -> Comment -> LevelString
+commentToLStr width cmt =
+  LString 1 $ showLine width CommentLine True cmt
 
-prcComments :: Verbosity -> Width -> [Comment] -> IO ()
-prcComments v width cmts =
-  mapM_ (prcComment v width) cmts
+commentsToLStrs :: Width -> [Comment] -> [LevelString]
+commentsToLStrs width cmts =
+  map (commentToLStr width) cmts
 
-prcMatch :: Verbosity -> Width -> (CompiledRegexp, InputLine) -> IO ()
-prcMatch v width (rx, ln) = do
-  prcComments v width $ comments rx
-  prc v 2 "Match:"
-  prc v 1 $ showLine width MatchedRegex True (sourceLine rx)
-  prc v 1 $ showLine width MatchedInput True ln
+matchToLStrs :: Width -> (CompiledRegexp, InputLine) -> [LevelString]
+matchToLStrs width (rx, ln) =
+  let cmtLStrs = commentsToLStrs width $ comments rx
+      infoLStr = LString 2 "Match:"
+      rxLStr   = LString 1 $ showLine width MatchedRegex True (sourceLine rx)
+      lnLStr   = LString 1 $ showLine width MatchedInput True ln
+  in cmtLStrs ++ [infoLStr, rxLStr, lnLStr]
 
 prcIMS :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] -> Int -> IO ()
 prcIMS v width rxs lns skip =
-  mapM_ (prcMatch v width) $ take skip $ zip rxs lns
+  let rxLnPairs = take skip $ zip rxs lns
+      matchLStrs = concatMap (matchToLStrs width) rxLnPairs
+  in mapM_ (prcLevelString v) matchLStrs
 
 data MatchScenario =
   UnmatchedInputLine
@@ -368,8 +378,8 @@ prcLcsDiff v width rxs lns lcsTable = do
   return (0, 0) -- TODO
 
 prcTailComments :: Verbosity -> Width -> [Comment] -> IO ()
-prcTailComments =
-  prcComments
+prcTailComments v width cmts =
+  mapM_ (prcLevelString v) $ commentsToLStrs width cmts
 
 prcDiffSummary :: Verbosity -> (Int, Int) -> IO ()
 prcDiffSummary v (unmatchedRxs, unmatchedLns) = do
