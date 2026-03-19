@@ -349,8 +349,7 @@ getMatchScenario rxsV lnsV lcsTable i j
     -- Similar, but here we can leave the suppression unmatched.
     (UnmatchedSuppression, "Deliberately preferring unmatched suppression")
   | isMatch =
-    -- We must use this match
-    (Match, "")
+    (Match, "") -- We must use this match
   | (lcsTable ! i ! (j-1)) > (lcsTable ! (i-1) ! j) =
     (UnmatchedInputLine, "Unmatched input line necessary to achieve lcs")
   | (lcsTable ! i ! (j-1)) == (lcsTable ! (i-1) ! j) =
