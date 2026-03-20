@@ -286,9 +286,13 @@ computeLcsTable rxs lns =
 data LevelString =
   LString Level String
 
-prcLevelString :: Verbosity -> LevelString -> IO ()
-prcLevelString v (LString level string) =
+prcLStr :: Verbosity -> LevelString -> IO ()
+prcLStr v (LString level string) =
   prc v level string
+
+prcLStrs :: Verbosity -> [LevelString] -> IO ()
+prcLStrs v lStrs =
+  mapM_ (prcLStr v) lStrs
 
 data LineType =
   UnmatchedRegex   -- unmatched suppression regex
@@ -336,7 +340,7 @@ prcIMS :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] -> Int -> IO ()
 prcIMS v width rxs lns skip =
   let rxLnPairs = take skip $ zip rxs lns
       matchLStrs = concatMap (matchToLStrs width) rxLnPairs
-  in mapM_ (prcLevelString v) matchLStrs
+  in prcLStrs v matchLStrs
 
 data MatchScenario =
   UnmatchedInputLine
@@ -378,7 +382,7 @@ prcLcsDiff v width rxs lns lcsTable = do
 
 prcTailComments :: Verbosity -> Width -> [Comment] -> IO ()
 prcTailComments v width cmts =
-  mapM_ (prcLevelString v) $ commentsToLStrs width cmts
+  prcLStrs v $ commentsToLStrs width cmts
 
 prcDiffSummary :: Verbosity -> (Int, Int) -> IO ()
 prcDiffSummary v (unmatchedRxs, unmatchedLns) = do
