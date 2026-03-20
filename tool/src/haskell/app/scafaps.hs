@@ -362,7 +362,7 @@ getMatchScenario rxsV lnsV lcsTable i j
     -- Similar, but here we can leave the suppression unmatched.
     (UnmatchedSuppression, "Deliberately preferring unmatched suppression")
   | isMatch =
-    (Match, "") -- We must use this match
+    (Match, "Use of this match necesssary to achieve lcs")
   | (lcsTable ! i ! (j-1)) > (lcsTable ! (i-1) ! j) =
     (UnmatchedInputLine, "Unmatched input line necessary to achieve lcs")
   | (lcsTable ! i ! (j-1)) == (lcsTable ! (i-1) ! j) =
@@ -376,9 +376,43 @@ getMatchScenario rxsV lnsV lcsTable i j
 prcLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] ->
   Vector (Vector Int) -> IO (Int, Int)
 prcLcsDiff v width rxs lns lcsTable = do
-  let regexpsV = fromList rxs  -- regexps as Vector
-      linesV   = fromList lns  -- lines as Vector
-  return (0, 0) -- TODO
+  let
+    rxsV = fromList rxs  -- regexps as Vector
+    lnsV = fromList lns  -- lines as Vector
+    helper :: Int -> Int -> [[LevelString]] -> Int -> Int
+      -> ([[LevelString]], (Int, Int))
+    helper i j lStrs unmatchedRxs unmatchedLns =
+      if (i == 0) && (j == 0) then
+        (lStrs, (unmatchedRxs, unmatchedLns))
+      else
+        let (matchScenario, dbgStr) = getMatchScenario rxsV lnsV lcsTable i j
+            rx = rxsV ! (i-1) -- i might be 0, but then we don't use this
+            ln = lnsV ! (j-1) -- same about j
+            dbgLStr  = LString 4 dbgStr
+        in case matchScenario of
+          UnmatchedInputLine ->
+            let explLStr = LString 2 "Unmatched input line:"
+                lnUmStr  = showLine width UnmatchedInput False ln
+                lnUmLstr = LString 0 lnUmStr
+                newLStrs = [dbgLStr,explLStr,lnUmLstr]:lStrs
+            in helper i (j-1) newLStrs unmatchedRxs (unmatchedLns+1)
+          UnmatchedSuppression ->
+            let cmtLStrs = commentsToLStrs width $ comments rx
+                explLStr = LString 2 "Unmatched suppression:"
+                rxError  = isJust $ maybeError rx
+                rxUmStr  = showLine width UnmatchedRegex rxError $ sourceLine rx
+                rxUmLStr = LString 0 rxUmStr
+                -- prepend comment lines from suppression file to possible
+                -- debug messages:
+                newLStrs = cmtLStrs:[dbgLStr,explLStr,rxUmLStr]:lStrs
+            in helper (i-1) j newLStrs (unmatchedRxs+1) unmatchedLns
+          Match ->
+            let matchLStrs = matchToLStrs width (rx,ln)
+                newLStrs   = matchLStrs:lStrs
+            in helper (i-1) (j-1) newLStrs unmatchedRxs unmatchedLns
+    result = helper (length rxsV) (length lnsV) [] 0 0
+  prcLStrs v $ concat $ fst result
+  return $ snd result
 
 prcTailComments :: Verbosity -> Width -> [Comment] -> IO ()
 prcTailComments v width cmts =
