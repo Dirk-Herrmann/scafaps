@@ -342,7 +342,6 @@ data MatchScenario =
   UnmatchedInputLine
   | UnmatchedSuppression
   | Match
-  | MatchTypeError
 
 getMatchScenario :: Vector CompiledRegexp -> Vector InputLine -> Vector (Vector Int)
   -> Int -> Int -> (MatchScenario, String)
@@ -367,7 +366,7 @@ getMatchScenario rxsV lnsV lcsTable i j
   | (lcsTable ! i ! (j-1)) < (lcsTable ! (i-1) ! j) =
     (UnmatchedSuppression, "Unmatched suppression necessary to achieve lcs")
   | otherwise =
-    (MatchTypeError, "")
+    error "Bad content of LCS table"
   where isMatch = isFullMatch (rxsV ! (i-1)) (lnsV ! (j-1))
 
 prcLcsDiff :: Verbosity -> Width -> [CompiledRegexp] -> [InputLine] ->
