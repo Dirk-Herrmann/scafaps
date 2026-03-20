@@ -11,7 +11,7 @@
 
 import Control.Monad (unless, when)
 import Data.List (findIndex)
-import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
 import Data.Vector ((!), constructN, fromList, Vector)
 import Data.Version (showVersion)
 import Data.Time.Clock.System (getSystemTime, systemNanoseconds, systemSeconds)
@@ -392,15 +392,15 @@ prcLcsDiff v width rxs lns lcsTable = do
         in case matchScenario of
           UnmatchedInputLine ->
             let explLStr = LString 2 "Unmatched input line:"
-                lnUmStr  = showLine width UnmatchedInput False ln
+                lnUmStr  = showLine width UnmatchedInput True ln
                 lnUmLstr = LString 0 lnUmStr
                 newLStrs = [dbgLStr,explLStr,lnUmLstr]:lStrs
             in helper i (j-1) newLStrs unmatchedRxs (unmatchedLns+1)
           UnmatchedSuppression ->
             let cmtLStrs = commentsToLStrs width $ comments rx
                 explLStr = LString 2 "Unmatched suppression:"
-                rxError  = isJust $ maybeError rx
-                rxUmStr  = showLine width UnmatchedRegex rxError $ sourceLine rx
+                rxValid  = isNothing $ maybeError rx
+                rxUmStr  = showLine width UnmatchedRegex rxValid $ sourceLine rx
                 rxUmLStr = LString 0 rxUmStr
                 -- prepend comment lines from suppression file to possible
                 -- debug messages:
