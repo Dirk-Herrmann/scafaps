@@ -1,5 +1,5 @@
-Error compiling suppression in line 0: unterminated character set
+Error compiling suppression in line 1: unterminated character set
   Offending suppression: >>[<<
-Error compiling suppression in line 1: missing ), unterminated subpattern
+Error compiling suppression in line 2: missing ), unterminated subpattern
   Offending suppression: >>(<<
 Compilation errors in 2 suppressions
