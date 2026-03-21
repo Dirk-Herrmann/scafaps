@@ -56,7 +56,7 @@ class Line:
 
 def read_lines(input_file):
    raw_lines = read_raw_lines(input_file)
-   lines = [Line(nr, raw_lines[nr]) for nr in range(len(raw_lines))]
+   lines = [Line(nr + 1, raw_lines[nr]) for nr in range(len(raw_lines))]
    return lines
 
 ##############################################################################
@@ -79,7 +79,7 @@ def read_suppressions_file(path):
       comments = []
       errors = 0
       never_matches = re.compile("$a")
-      for nr, raw_line in enumerate(raw_lines):
+      for nr, raw_line in enumerate(raw_lines, start=1):
          if len(raw_line) > 0 and raw_line[0] == "#":
             comments.append(Line(nr, raw_line))
             continue
