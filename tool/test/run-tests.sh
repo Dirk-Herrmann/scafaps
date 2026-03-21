@@ -12,6 +12,7 @@ function validate () {
       echo "PASSED"
    else
       echo "FAILED: ${toolname} test '${testname}'"
+      diff "${expected}" "${output}" || true
    fi
 }
 
