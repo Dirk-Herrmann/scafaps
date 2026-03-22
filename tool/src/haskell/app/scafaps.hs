@@ -9,6 +9,7 @@
 -- TODO: Output of compiled regexps with out3 is not very user friendly, same
 -- problem with Python code.
 
+import Control.DeepSeq (($!!))
 import Control.Monad (unless, when)
 import Data.List (findIndex)
 import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
@@ -74,7 +75,7 @@ type LineNr  = Int
 readRawLines :: Handle -> IO [RawLine]
 readRawLines handle = do
   wholeFile <- hGetContents handle
-  return $ lines wholeFile
+  return $!! lines wholeFile
 
 enumerateRawLines :: [RawLine] -> [(LineNr, RawLine)]
 enumerateRawLines rawLines = zip [1..] rawLines
@@ -609,7 +610,7 @@ main = do
 
   let remainingRegexps = drop lenInitMatchingSeq rxs
       remainingLines   = drop lenInitMatchingSeq numberedLines
-      lcsTable = computeLcsTable remainingRegexps remainingLines
+      lcsTable = id $!! computeLcsTable remainingRegexps remainingLines
   prc v 4 $ "lcsTable = " ++ show lcsTable
   -- BEGIN Performance measurement
   t5 <- getSystemTimeAsFloat
