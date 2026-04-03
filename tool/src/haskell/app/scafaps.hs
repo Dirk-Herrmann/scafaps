@@ -529,6 +529,12 @@ getSystemTimeAsFloat = do
       n = fromIntegral (systemNanoseconds t) :: Double
   return (s + 0.000000001 * n)
 
+prcTime :: String -> IO ()
+prcTime _ =
+  return ()
+-- prcTime string =
+--   putStrLn string
+
 main :: IO ()
 main = do
   -- BEGIN Performance measurement
@@ -540,14 +546,14 @@ main = do
   -- handling verbosity
   let v = optVerbosity options
   -- BEGIN Performance measurement
-  prc v 4 $ printf "TIMESTAMP t0: %20.9f                  start" t0
+  prcTime $ printf "TIMESTAMP t0: %20.9f                  start" t0
   -- END   Performance measurement
   prcVerbosityExplanation v
   prc v 3 $ show options
 
   -- BEGIN Performance measurement
   t1 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t1: %20.9f  " t1
+  prcTime $ printf "TIMESTAMP t1: %20.9f  " t1
     ++ printf "delta: %7.3f  read options" (t1 - t0)
   -- END   Performance measurement
 
@@ -584,7 +590,7 @@ main = do
         exitSuccess
   -- BEGIN Performance measurement
   t2 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t2: %20.9f  " t2
+  prcTime $ printf "TIMESTAMP t2: %20.9f  " t2
     ++ printf "delta: %7.3f  read suppressions" (t2 - t1)
   -- END   Performance measurement
 
@@ -595,7 +601,7 @@ main = do
   prc v 3 $ "Input lines: " ++ show numberedLines
   -- BEGIN Performance measurement
   t3 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t3: %20.9f  " t3
+  prcTime $ printf "TIMESTAMP t3: %20.9f  " t3
     ++ printf "delta: %7.3f  read input lines" (t3 - t2)
   -- END   Performance measurement
 
@@ -604,17 +610,17 @@ main = do
   prc v 1 $ "Length of initial matching sequence: " ++ show lenInitMatchingSeq
   -- BEGIN Performance measurement
   t4 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t4: %20.9f  " t4
+  prcTime $ printf "TIMESTAMP t4: %20.9f  " t4
     ++ printf "delta: %7.3f  compute initial matching sequence" (t4 - t3)
   -- END   Performance measurement
 
   let remainingRegexps = drop lenInitMatchingSeq rxs
       remainingLines   = drop lenInitMatchingSeq numberedLines
-      lcsTable = id $!! computeLcsTable remainingRegexps remainingLines
+      lcsTable = id $ computeLcsTable remainingRegexps remainingLines
   prc v 4 $ "lcsTable = " ++ show lcsTable
   -- BEGIN Performance measurement
   t5 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t5: %20.9f  " t5
+  prcTime $ printf "TIMESTAMP t5: %20.9f  " t5
     ++ printf "delta: %7.3f  computed lcstable" (t5 - t4)
   -- END   Performance measurement
 
@@ -622,7 +628,7 @@ main = do
     prcResults v rxs numberedLines lenInitMatchingSeq lcsTable tailCmts
   -- BEGIN Performance measurement
   t6 <- getSystemTimeAsFloat
-  prc v 4 $ printf "TIMESTAMP t6: %20.9f  " t6
+  prcTime $ printf "TIMESTAMP t6: %20.9f  " t6
     ++ printf "delta: %7.3f  show results" (t6 - t5)
   -- END   Performance measurement
 
